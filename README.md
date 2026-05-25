@@ -1,36 +1,142 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Photo Vault
 
-## Getting Started
+Mobile-first private photo vault PWA built with Next.js App Router, direct-to-S3 uploads, and a 6-digit passcode lock screen.
 
-First, run the development server:
+## Features
+
+- iOS-style 6-digit passcode lock with session cookie auth
+- Presigned PUT uploads (files never pass through the Next.js server)
+- Apple Photos–inspired dark gallery with virtualized grid
+- Installable PWA (manifest + service worker)
+
+## Local setup
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Environment variables
+
+Copy the example file and fill in values:
+
+```bash
+cp .env.example .env.local
+```
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PHOTO_APP_PASSCODE` | Yes | 6-digit numeric passcode (e.g. `123456`) |
+| `SESSION_SECRET` | Yes (prod) | Long random string used to sign session JWT cookies |
+| `AWS_REGION` | Yes | S3 region (e.g. `us-east-1`) |
+| `AWS_ACCESS_KEY_ID` | Yes | IAM access key |
+| `AWS_SECRET_ACCESS_KEY` | Yes | IAM secret key |
+| `S3_BUCKET_NAME` | Yes | Private S3 bucket name |
+| `S3_USE_PRESIGNED_VIEW` | No | Default `true`. Set `false` only if objects are publicly readable |
+
+### 3. Run the dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000), enter your passcode, then use the gallery upload button.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## AWS S3 CORS configuration
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Apply this CORS configuration on your **private** bucket (replace origin with your production URL):
 
-## Learn More
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedOrigins": [
+      "http://localhost:3000",
+      "https://your-app.vercel.app"
+    ],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
 
-To learn more about Next.js, take a look at the following resources:
+- **PUT** is required for browser direct uploads via presigned URLs.
+- **GET/HEAD** are required if you disable presigned view URLs and serve public object URLs, or for debugging.
+- With presigned GET URLs (default), the browser loads images from `*.amazonaws.com`; CORS on GET still applies for canvas/cross-origin use.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## IAM permissions
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Attach a policy like this to the IAM user whose keys you use (tighten `Resource` to your bucket ARN):
 
-## Deploy on Vercel
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PhotoVaultS3",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::YOUR_BUCKET_NAME",
+        "arn:aws:s3:::YOUR_BUCKET_NAME/originals/*"
+      ]
+    }
+  ]
+}
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The app stores originals at `originals/{uuid}.{ext}`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Optional: public direct S3 URLs
+
+By default the gallery uses **presigned GET URLs** so the bucket can stay private. To use direct URLs:
+
+`https://{bucket}.s3.{region}.amazonaws.com/{key}`
+
+1. Add a bucket policy allowing `s3:GetObject` on `originals/*` (or make objects public).
+2. Set `S3_USE_PRESIGNED_VIEW=false` in `.env.local` / Vercel.
+
+## Deploy to Vercel
+
+1. Push the repository to GitHub.
+2. Import the project in [Vercel](https://vercel.com/new).
+3. Add the same environment variables from `.env.example` in **Project → Settings → Environment Variables**.
+4. Use a strong `SESSION_SECRET` (not the passcode).
+5. Add your Vercel URL to the S3 bucket CORS `AllowedOrigins`.
+6. Deploy.
+
+```bash
+# Optional CLI deploy from repo root
+npx vercel
+npx vercel --prod
+```
+
+After deploy, install on iOS via **Share → Add to Home Screen** (standalone PWA).
+
+## Project structure
+
+```
+app/              # Routes, API handlers, pages
+components/       # UI (passcode, gallery, PWA)
+lib/              # Auth, S3, upload client utilities
+types/            # Shared TypeScript types
+middleware.ts     # Protects /gallery and /api/*
+public/           # manifest, service worker, icons
+```
+
+## API routes
+
+| Route | Auth | Description |
+|-------|------|-------------|
+| `POST /api/auth/login` | Public | Verify passcode, set session cookie |
+| `POST /api/auth/logout` | Public | Clear session |
+| `GET /api/auth/session` | Public | Check session |
+| `POST /api/upload/init` | Required | Presigned PUT URL + `photoId` + `key` |
+| `GET /api/gallery/list` | Required | List originals from S3 |
+| `GET /api/gallery/url?key=` | Required | View URL for a single object |
