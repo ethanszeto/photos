@@ -72,10 +72,6 @@ export const handler = async (event) => {
     const modifiedAt = object.LastModified?.toISOString() ?? uploadedAt;
     const photoId = randomUUID();
 
-    // -----------------------------------
-    // Generate thumbnail
-    // -----------------------------------
-
     const smallBuffer = await sharp(buffer, bufferOptions)
       .rotate() // respects EXIF orientation
       .resize({
@@ -91,10 +87,6 @@ export const handler = async (event) => {
       })
       .toBuffer();
 
-    // -----------------------------------
-    // Generate medium preview
-    // -----------------------------------
-
     const mediumBuffer = await sharp(buffer, bufferOptions)
       .rotate()
       .resize({
@@ -109,16 +101,8 @@ export const handler = async (event) => {
       })
       .toBuffer();
 
-    // -----------------------------------
-    // Create destination keys
-    // -----------------------------------
-
     const smallKey = `small/${photoId}.webp`;
     const mediumKey = `medium/${photoId}.webp`;
-
-    // -----------------------------------
-    // Upload into thumbnail bucket
-    // -----------------------------------
 
     await Promise.all([
       s3.send(
@@ -141,42 +125,25 @@ export const handler = async (event) => {
       ),
     ]);
 
-    // -----------------------------------
-    // DynamoDB item
-    // -----------------------------------
-
+    // Upload Image Record to DynamoDB
     const item = {
       PK: "PHOTOS",
-
       SK: `${takenAt}#${photoId}`,
-
       photoId,
-
       originalKey,
       smallKey,
       mediumKey,
-
       takenAt,
-
       uploadedAt: new Date().toISOString(),
-
       modifiedAt: exifData.modifiedAt || object.LastModified?.toISOString(),
-
       width: sharpMetadata.width,
       height: sharpMetadata.height,
-
       mimeType: object.ContentType,
       originalExtension: extension,
-
       originalBucket,
       thumbnailBucket: THUMBNAIL_BUCKET,
-
       metadata: exifData.metadata,
     };
-
-    // -----------------------------------
-    // Insert DynamoDB record
-    // -----------------------------------
 
     await dynamo.send(
       new PutCommand({
