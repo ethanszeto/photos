@@ -9,13 +9,13 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Photo Vault",
-  description: "Private personal photo vault",
+  title: "Photos",
+  description: "Photos Application",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Photo Vault",
+    title: "Photos",
   },
   icons: {
     icon: "/icons/icon-192.png",

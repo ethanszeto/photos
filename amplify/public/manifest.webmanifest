@@ -1,7 +1,7 @@
 {
-  "name": "Photo Vault",
-  "short_name": "Vault",
-  "description": "Private personal photo vault",
+  "name": "Photos",
+  "short_name": "Photos",
+  "description": "Photos Application",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
