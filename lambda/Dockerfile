@@ -1,5 +1,5 @@
 # Use AWS Lambda Node.js base image
-FROM public.ecr.aws/lambda/nodejs:20
+FROM public.ecr.aws/lambda/nodejs:24
 
 # Install system dependencies (ffmpeg + build tools for sharp)
 RUN yum update -y && \
