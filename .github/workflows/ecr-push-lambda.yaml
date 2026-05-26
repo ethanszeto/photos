@@ -1,6 +1,8 @@
-name: Push to Backend Prod ECR
+name: Push to ECR and Update Lambda to Latest
 
 on:
+  paths:
+    - lambda/**
   push:
     branches: [main]
 
