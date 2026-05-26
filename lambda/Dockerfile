@@ -1,18 +1,17 @@
 FROM public.ecr.aws/lambda/nodejs:24
 
-# Install build tools (sharp needs these sometimes)
 RUN dnf install -y \
     gcc-c++ \
     make \
     tar \
     gzip \
+    xz \
     && dnf clean all
 
-# Copy a static ffmpeg binary
 ADD https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz /tmp/
 
 RUN mkdir -p /opt/ffmpeg && \
-    tar -xf /tmp/ffmpeg-release-amd64-static.tar.xz -C /opt/ffmpeg --strip-components=1 && \
+    tar -xJf /tmp/ffmpeg-release-amd64-static.tar.xz -C /opt/ffmpeg --strip-components=1 && \
     ln -s /opt/ffmpeg/ffmpeg /usr/local/bin/ffmpeg && \
     ln -s /opt/ffmpeg/ffprobe /usr/local/bin/ffprobe
 
