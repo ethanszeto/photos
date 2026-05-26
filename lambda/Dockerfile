@@ -1,30 +1,26 @@
-# Use AWS Lambda Node.js base image
 FROM public.ecr.aws/lambda/nodejs:24
 
-# Install system dependencies (ffmpeg + build tools for sharp)
-RUN yum update -y && \
-    yum install -y \
-      gcc-c++ \
-      make \
-      tar \
-      gzip \
-      ffmpeg && \
-    yum clean all
+# Install build tools (sharp needs these sometimes)
+RUN dnf install -y \
+    gcc-c++ \
+    make \
+    tar \
+    gzip \
+    && dnf clean all
 
-# Set working directory
+# Copy a static ffmpeg binary
+ADD https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz /tmp/
+
+RUN mkdir -p /opt/ffmpeg && \
+    tar -xf /tmp/ffmpeg-release-amd64-static.tar.xz -C /opt/ffmpeg --strip-components=1 && \
+    ln -s /opt/ffmpeg/ffmpeg /usr/local/bin/ffmpeg && \
+    ln -s /opt/ffmpeg/ffprobe /usr/local/bin/ffprobe
+
 WORKDIR /var/task
 
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies (includes sharp)
 RUN npm install --omit=dev
 
-# Copy application code to container
 COPY . .
 
-# Ensure sharp works correctly in Lambda environment
-ENV NODE_ENV=production
-
-# Lambda handler entry point
 CMD ["index.handler"]
