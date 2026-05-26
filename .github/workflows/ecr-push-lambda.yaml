@@ -26,6 +26,6 @@ jobs:
 
       - name: Build and push image
         run: |
-          docker build -t photos/image-processor /lambda
+          docker build -t photos/image-processor ./lambda
           docker tag photos/image-processor:latest 533266997703.dkr.ecr.us-east-1.amazonaws.com/photos/image-processor:latest
           docker push 533266997703.dkr.ecr.us-east-1.amazonaws.com/photos/image-processor:latest
