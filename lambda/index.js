@@ -1,166 +1,116 @@
+import extractExifData from "./utils/extractExifData.js";
+import getMediaType from "./utils/getMediaType.js";
+import processGif from "./mediaPipelines/gif.js";
+import processImage from "./mediaPipelines/image.js";
+import processVideo from "./mediaPipelines/video.js";
 import sharp from "sharp";
+import upload from "./utils/s3Upload.js";
 import { randomUUID } from "crypto";
-import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { AWS_REGION, THUMBNAIL_BUCKET, TABLE_NAME } from "./utils/config.js";
 
-import { extractExifData } from "./extractExifData.mjs";
-
-const s3 = new S3Client({
-  region: process.env.AWS_REGION,
-});
-const dynamo = DynamoDBDocumentClient.from(
-  new DynamoDBClient({
-    region: process.env.AWS_REGION,
-  }),
-);
-
-const bufferOptions = {
-  limitInputPixels: 10000 * 10000,
-};
-
-const THUMBNAIL_BUCKET = process.env.THUMBNAIL_BUCKET;
-const TABLE_NAME = process.env.PHOTO_TABLE;
+const s3 = new S3Client({ region: AWS_REGION });
+const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGION }));
 
 export const handler = async (event) => {
   try {
-    const record = event.Records?.[0];
+    for (const record of event.Records || []) {
+      const originalBucket = record.s3.bucket.name;
 
-    if (!record) {
-      throw new Error("No S3 record found");
-    }
+      const originalKey = decodeURIComponent(record.s3.object.key.replace(/\+/g, " "));
 
-    const originalBucket = record.s3.bucket.name;
+      // prevent recursion
+      if (originalKey.startsWith("small/") || originalKey.startsWith("medium/") || originalKey.startsWith("video/")) {
+        console.log("Skipping derived file:", originalKey);
+        continue;
+      }
 
-    const originalKey = decodeURIComponent(record.s3.object.key.replace(/\+/g, " "));
-
-    // Prevent recursive upload of items to thumbnails bucket
-    if (originalKey.startsWith("medium/") || originalKey.startsWith("small/")) {
-      console.log("Skipping derived image:", originalKey);
-      return;
-    }
-
-    console.log("Processing:", originalKey);
-
-    const extension = originalKey.split(".").pop()?.toLowerCase();
-
-    // -----------------------------------
-    // Download original image
-    // -----------------------------------
-
-    const object = await s3.send(
-      new GetObjectCommand({
-        Bucket: originalBucket,
-        Key: originalKey,
-      }),
-    );
-
-    if (!object.Body) {
-      throw new Error("S3 object body missing");
-    }
-
-    const buffer = Buffer.from(await object.Body.transformToByteArray());
-
-    // -----------------------------------
-    // Extract metadata
-    // -----------------------------------
-
-    const sharpMetadata = await sharp(buffer, bufferOptions).metadata();
-    const exifData = await extractExifData(buffer);
-    const takenAt = exifData.takenAt || object.LastModified?.toISOString() || new Date().toISOString();
-    const uploadedAt = new Date().toISOString();
-    const modifiedAt = object.LastModified?.toISOString() ?? uploadedAt;
-    const photoId = randomUUID();
-
-    const smallBuffer = await sharp(buffer, bufferOptions)
-      .rotate() // respects EXIF orientation
-      .resize({
-        width: 300,
-        height: 300,
-        fit: "inside",
-        withoutEnlargement: true,
-        withoutReduction: true,
-      })
-      .webp({
-        quality: 80,
-        effort: 4,
-      })
-      .toBuffer();
-
-    const mediumBuffer = await sharp(buffer, bufferOptions)
-      .rotate()
-      .resize({
-        width: 1600,
-        fit: "inside",
-        withoutEnlargement: true,
-        withoutReduction: true,
-      })
-      .webp({
-        quality: 85,
-        effort: 4,
-      })
-      .toBuffer();
-
-    const smallKey = `small/${photoId}.webp`;
-    const mediumKey = `medium/${photoId}.webp`;
-
-    await Promise.all([
-      s3.send(
-        new PutObjectCommand({
-          Bucket: THUMBNAIL_BUCKET,
-          Key: smallKey,
-          Body: smallBuffer,
-          ContentType: "image/webp",
-          CacheControl: "public, max-age=31536000, immutable",
+      // download original
+      const object = await s3.send(
+        new GetObjectCommand({
+          Bucket: originalBucket,
+          Key: originalKey,
         }),
-      ),
-      s3.send(
-        new PutObjectCommand({
-          Bucket: THUMBNAIL_BUCKET,
-          Key: mediumKey,
-          Body: mediumBuffer,
-          ContentType: "image/webp",
-          CacheControl: "public, max-age=31536000, immutable",
+      );
+
+      const buffer = Buffer.from(await object.Body.transformToByteArray());
+      const contentType = object.ContentType || "";
+      const mediaType = getMediaType(contentType);
+
+      if (mediaType === "unknown") {
+        console.log("Unsupported media type:", contentType);
+        continue;
+      }
+
+      const id = randomUUID(); // media ID
+      const now = new Date().toISOString();
+      const exifData = await extractExifData(buffer);
+      const takenAt = exifData.takenAt || object.LastModified?.toISOString() || now;
+      const modifiedAt = exifData.modifiedAt || object.LastModified?.toISOString() || now;
+
+      /**
+       * Generate Thumbnails for Media
+       */
+      let result;
+      if (mediaType === "image") {
+        result = await processImage(buffer, id);
+      }
+
+      if (mediaType === "video") {
+        result = await processVideo(buffer, id);
+      }
+
+      if (mediaType === "gif") {
+        result = await processGif(buffer, id);
+      }
+
+      /**
+       * Upload both previews to S3
+       */
+      const smallKey = `small/${id}.webp`;
+      const mediumKey = `medium/${id}.webp`;
+
+      await Promise.all([
+        upload(s3, THUMBNAIL_BUCKET, smallKey, result.small, "image/webp"),
+        upload(s3, THUMBNAIL_BUCKET, mediumKey, result.medium, "image/webp"),
+      ]);
+
+      /**
+       * Upload unified record to DynamoDB
+       */
+      const item = {
+        PK: "PHOTOS",
+        SK: `${takenAt}#${id}`,
+        id,
+        mediaType,
+        originalKey,
+        originalBucket,
+        smallKey,
+        mediumKey,
+        thumbnailBucket: THUMBNAIL_BUCKET,
+        takenAt,
+        uploadedAt: now,
+        modifiedAt,
+        mimeType: contentType,
+        image_metadata: exifData.metadata,
+        video_metadata: result.video_metadata,
+      };
+
+      await dynamo.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: item,
         }),
-      ),
-    ]);
+      );
 
-    // Upload Image Record to DynamoDB
-    const item = {
-      PK: "PHOTOS",
-      SK: `${takenAt}#${photoId}`,
-      photoId,
-      originalKey,
-      smallKey,
-      mediumKey,
-      takenAt,
-      uploadedAt: new Date().toISOString(),
-      modifiedAt: exifData.modifiedAt || object.LastModified?.toISOString(),
-      width: sharpMetadata.width,
-      height: sharpMetadata.height,
-      mimeType: object.ContentType,
-      originalExtension: extension,
-      originalBucket,
-      thumbnailBucket: THUMBNAIL_BUCKET,
-      metadata: exifData.metadata,
-    };
+      console.log("Processed:", id);
+    }
 
-    await dynamo.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: item,
-      }),
-    );
-
-    console.log("Successfully processed:", photoId);
-
-    return {
-      success: true,
-      photoId,
-    };
-  } catch (error) {
-    console.error("Lambda processing error:", error);
-
-    throw error;
+    return { success: true };
+  } catch (err) {
+    console.error("Lambda processing error:", err);
+    throw err;
   }
 };

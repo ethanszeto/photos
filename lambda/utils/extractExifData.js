@@ -1,6 +1,6 @@
 import exifr from "exifr";
 
-export async function extractExifData(buffer) {
+export default async function extractExifData(buffer) {
   try {
     const exif = await exifr.parse(buffer, {
       tiff: true,
@@ -30,9 +30,6 @@ export async function extractExifData(buffer) {
       modifiedAt: modifiedDate ? new Date(modifiedDate).toISOString() : null,
 
       metadata: {
-        // -----------------------------------
-        // 1. TIME METADATA
-        // -----------------------------------
         time: {
           takenAt: exif.DateTimeOriginal ? new Date(exif.DateTimeOriginal).toISOString() : null,
           createdAt: exif.CreateDate ? new Date(exif.CreateDate).toISOString() : null,
@@ -40,20 +37,12 @@ export async function extractExifData(buffer) {
           offsetTime: exif.OffsetTimeOriginal ?? null,
           subSecTime: exif.SubSecTimeOriginal ?? null,
         },
-
-        // -----------------------------------
-        // 2. GPS METADATA
-        // -----------------------------------
         gps: {
           latitude: exif.latitude ?? null,
           longitude: exif.longitude ?? null,
           altitude: exif.GPSAltitude ?? null,
           direction: exif.GPSImgDirection ?? null,
         },
-
-        // -----------------------------------
-        // 3. DEVICE METADATA
-        // -----------------------------------
         device: {
           make: exif.Make ?? null,
           model: exif.Model ?? null,
@@ -61,10 +50,6 @@ export async function extractExifData(buffer) {
           owner: exif.OwnerName ?? null,
           serialNumber: exif.BodySerialNumber ?? null,
         },
-
-        // -----------------------------------
-        // 4. CAMERA SETTINGS
-        // -----------------------------------
         camera: {
           iso: exif.ISO ?? null,
           focalLength: exif.FocalLength ?? null,
@@ -76,10 +61,6 @@ export async function extractExifData(buffer) {
           meteringMode: exif.MeteringMode ?? null,
           exposureCompensation: exif.ExposureCompensation ?? null,
         },
-
-        // -----------------------------------
-        // 5. IMAGE GEOMETRY
-        // -----------------------------------
         geometry: {
           width: exif.ExifImageWidth ?? null,
           height: exif.ExifImageHeight ?? null,
@@ -87,10 +68,6 @@ export async function extractExifData(buffer) {
           colorSpace: exif.ColorSpace ?? null,
           bitsPerSample: exif.BitsPerSample ?? null,
         },
-
-        // -----------------------------------
-        // 6. IPHONE / MAKER NOTES (PARTIAL SAFE SET)
-        // -----------------------------------
         apple: {
           livePhotoIdentifier: exif.BurstUUID ?? null,
           livePhotoIndex: exif.LivePhotoVideoIndex ?? null,
@@ -98,20 +75,12 @@ export async function extractExifData(buffer) {
           hdrGainMap: exif.HDRGainMapVersion ?? null,
           lensModel: exif.LensModel ?? null,
         },
-
-        // -----------------------------------
-        // 7. EDITING METADATA
-        // -----------------------------------
         editing: {
           software: exif.Software ?? null,
           processingSoftware: exif.ProcessingSoftware ?? null,
           history: exif.History ?? null,
           profileName: exif.ProfileName ?? null,
         },
-
-        // -----------------------------------
-        // 8. MEDIA METADATA
-        // -----------------------------------
         media: {
           format: exif.FileType ?? null,
           mimeType: exif.MIMEType ?? null,
