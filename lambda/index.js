@@ -17,15 +17,28 @@ const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGI
 export const handler = async (event) => {
   try {
     for (const record of event.Records || []) {
-      const originalBucket = record.s3.bucket.name;
+      // SQS message body contains the S3 event JSON
+      const body = JSON.parse(record.body);
 
-      const originalKey = decodeURIComponent(record.s3.object.key.replace(/\+/g, " "));
+      // S3 event record inside the SQS message
+      const s3Record = body.Records?.[0];
+
+      if (!s3Record) {
+        console.warn("Missing S3 record in SQS message");
+        continue;
+      }
+
+      const originalBucket = s3Record.s3.bucket.name;
+
+      const originalKey = decodeURIComponent(s3Record.s3.object.key.replace(/\+/g, " "));
 
       // prevent recursion
       if (originalKey.startsWith("small/") || originalKey.startsWith("medium/") || originalKey.startsWith("video/")) {
         console.log("Skipping derived file:", originalKey);
         continue;
       }
+
+      console.log("Processing:", originalKey);
 
       // download original
       const object = await s3.send(
