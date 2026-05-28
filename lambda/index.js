@@ -17,10 +17,12 @@ const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGI
 export const handler = async (event) => {
   try {
     for (const record of event.Records || []) {
-      // SQS message body contains the S3 event JSON
+      console.log("RAW RECORD:", JSON.stringify(record, null, 2));
+
       const body = JSON.parse(record.body);
 
-      // S3 event record inside the SQS message
+      console.log("PARSED BODY:", JSON.stringify(body, null, 2));
+
       const s3Record = body.Records?.[0];
 
       if (!s3Record) {
@@ -47,6 +49,10 @@ export const handler = async (event) => {
           Key: originalKey,
         }),
       );
+
+      if (!object.Body) {
+        throw new Error(`Missing object body for ${originalKey}`);
+      }
 
       const buffer = Buffer.from(await object.Body.transformToByteArray());
       const contentType = object.ContentType || "";
