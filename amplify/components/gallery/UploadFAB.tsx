@@ -21,7 +21,27 @@ type UploadItem = {
   error?: string;
 };
 
+type BatchUploadState = {
+  total: number;
+  completed: number;
+  failed: number;
+  /** Progress 0–100 for the file currently uploading. */
+  currentProgress: number;
+  phase: "uploading" | "done";
+};
+
 type UploadMode = "select" | "since-latest";
+
+const BATCH_DISMISS_MS = 3000;
+const SINGLE_DISMISS_MS = 2000;
+
+function batchOverallPercent(batch: BatchUploadState): number {
+  const { total, completed, failed, currentProgress, phase } = batch;
+  if (total === 0) return 0;
+  if (phase === "done") return 100;
+  const finished = completed + failed;
+  return Math.min(100, Math.round((finished * 100 + currentProgress) / total));
+}
 
 export function UploadFAB({ onUploaded, latestTakenAt: latestTakenAtHint }: UploadFABProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -33,9 +53,10 @@ export function UploadFAB({ onUploaded, latestTakenAt: latestTakenAtHint }: Uplo
   const [latestTakenAt, setLatestTakenAt] = useState<string | null>(latestTakenAtHint ?? null);
   const [loadingLatest, setLoadingLatest] = useState(false);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
+  const [batch, setBatch] = useState<BatchUploadState | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const busy = uploads.some((u) => u.status === "uploading");
+  const busy = uploads.some((u) => u.status === "uploading") || batch?.phase === "uploading";
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -64,32 +85,90 @@ export function UploadFAB({ onUploaded, latestTakenAt: latestTakenAtHint }: Uplo
     requestAnimationFrame(() => inputRef.current?.click());
   }, []);
 
-  const uploadFiles = useCallback(
-    async (files: File[]) => {
-      if (files.length === 0) return;
+  const uploadSingleFile = useCallback(
+    async (file: File) => {
+      const id = crypto.randomUUID();
+      setUploads([{ id, name: file.name, progress: 0, status: "uploading" }]);
 
-      for (const file of files) {
-        const id = crypto.randomUUID();
-        setUploads((current) => [...current, { id, name: file.name, progress: 0, status: "uploading" }]);
+      try {
+        const result = await uploadFileToS3(file, (progress) => {
+          setUploads((current) => current.map((item) => (item.id === id ? { ...item, progress } : item)));
+        });
 
-        try {
-          const result = await uploadFileToS3(file, (progress) => {
-            setUploads((current) => current.map((item) => (item.id === id ? { ...item, progress } : item)));
-          });
+        setUploads((current) => current.map((item) => (item.id === id ? { ...item, progress: 100, status: "done" } : item)));
+        onUploaded(result);
 
-          setUploads((current) => current.map((item) => (item.id === id ? { ...item, progress: 100, status: "done" } : item)));
-          onUploaded(result);
-
-          setTimeout(() => {
-            setUploads((current) => current.filter((item) => item.id !== id));
-          }, 2000);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Upload failed";
-          setUploads((current) => current.map((item) => (item.id === id ? { ...item, status: "error", error: message } : item)));
-        }
+        setTimeout(() => setUploads([]), SINGLE_DISMISS_MS);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Upload failed";
+        setUploads((current) => current.map((item) => (item.id === id ? { ...item, status: "error", error: message } : item)));
       }
     },
     [onUploaded],
+  );
+
+  const uploadBatch = useCallback(
+    async (files: File[]) => {
+      const total = files.length;
+      let completed = 0;
+      let failed = 0;
+      let lastResult: UploadResult | null = null;
+
+      setBatch({ total, completed: 0, failed: 0, currentProgress: 0, phase: "uploading" });
+
+      for (const file of files) {
+        try {
+          const result = await uploadFileToS3(file, (progress) => {
+            setBatch({
+              total,
+              completed,
+              failed,
+              currentProgress: progress,
+              phase: "uploading",
+            });
+          });
+          completed++;
+          lastResult = result;
+          setBatch({
+            total,
+            completed,
+            failed,
+            currentProgress: 100,
+            phase: "uploading",
+          });
+        } catch {
+          failed++;
+          setBatch({
+            total,
+            completed,
+            failed,
+            currentProgress: 0,
+            phase: "uploading",
+          });
+        }
+      }
+
+      setBatch({ total, completed, failed, currentProgress: 100, phase: "done" });
+
+      if (completed > 0 && lastResult) {
+        onUploaded(lastResult);
+      }
+
+      setTimeout(() => setBatch(null), BATCH_DISMISS_MS);
+    },
+    [onUploaded],
+  );
+
+  const uploadFiles = useCallback(
+    async (files: File[]) => {
+      if (files.length === 0) return;
+      if (files.length === 1) {
+        await uploadSingleFile(files[0]);
+        return;
+      }
+      await uploadBatch(files);
+    },
+    [uploadSingleFile, uploadBatch],
   );
 
   const handleFiles = useCallback(
@@ -140,6 +219,16 @@ export function UploadFAB({ onUploaded, latestTakenAt: latestTakenAtHint }: Uplo
     openFilePicker();
   };
 
+  const toastBottomClass = "fixed left-4 right-4 z-40 mx-auto max-w-md bottom-[calc(6rem+env(safe-area-inset-bottom,0px))]";
+
+  const batchLabel = batch
+    ? batch.phase === "done"
+      ? batch.failed === 0
+        ? `Uploaded ${batch.completed} photo${batch.completed === 1 ? "" : "s"}`
+        : `Uploaded ${batch.completed} of ${batch.total}${batch.failed > 0 ? ` · ${batch.failed} failed` : ""}`
+      : `Uploading ${batch.completed + batch.failed + 1} of ${batch.total}`
+    : "";
+
   return (
     <>
       <input
@@ -163,13 +252,32 @@ export function UploadFAB({ onUploaded, latestTakenAt: latestTakenAtHint }: Uplo
       )}
 
       {statusMessage && (
-        <div className="fixed left-4 right-4 z-40 mx-auto max-w-md rounded-2xl border border-white/10 bg-zinc-900/95 px-4 py-3 text-center text-sm text-white/80 shadow-xl backdrop-blur-md bottom-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+        <div
+          className={`${toastBottomClass} rounded-2xl border border-white/10 bg-zinc-900/95 px-4 py-3 text-center text-sm text-white/80 shadow-xl backdrop-blur-md`}
+        >
           {statusMessage}
         </div>
       )}
 
-      {uploads.length > 0 && (
-        <div className="fixed left-4 right-4 z-40 mx-auto max-w-md space-y-2 bottom-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+      {batch && (
+        <div className={`${toastBottomClass} rounded-2xl border border-white/10 bg-zinc-900/95 px-4 py-3 shadow-xl backdrop-blur-md`}>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium text-white/90">
+              {batch.phase === "done" ? "Upload complete" : "Uploading photos"}
+            </p>
+            <span className="text-xs tabular-nums text-white/50">{batchLabel}</span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-white/80 transition-all duration-200"
+              style={{ width: `${batchOverallPercent(batch)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {!batch && uploads.length > 0 && (
+        <div className={`${toastBottomClass} space-y-2`}>
           {uploads.map((item) => (
             <div key={item.id} className="rounded-2xl border border-white/10 bg-zinc-900/95 px-4 py-3 shadow-xl backdrop-blur-md">
               <div className="flex items-center justify-between gap-2">

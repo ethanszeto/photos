@@ -28,6 +28,7 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
   const [items, setItems] = useState<MediaItem[]>(initialItems);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const idToIndexRef = useRef(new Map<string, number>());
 
@@ -73,24 +74,56 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
     idToIndexRef.current = map;
   }, [items]);
 
+  const refreshGallery = useCallback(
+    async (mode: "replace" | "merge") => {
+      const response = await fetch("/api/media?limit=100", noStoreFetchInit);
+      if (!response.ok) throw new Error("Failed to load media");
+      const data = (await response.json()) as MediaListResponse;
+
+      if (mode === "replace") {
+        setItems(applyLoadedItems(data.items));
+        setCursor(data.nextCursor);
+        setViewerIndex(null);
+        requestAnimationFrame(() => {
+          gridRef.current?.scrollToItemIndex(0, { align: "start", behavior: "auto" });
+        });
+      } else {
+        setItems((current) => {
+          const byId = new Map(current.map((item) => [item.id, item]));
+          for (const item of data.items) {
+            byId.set(item.id, item);
+          }
+          const merged = Array.from(byId.values()).sort(
+            (a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime(),
+          );
+          return applyLoadedItems(merged);
+        });
+      }
+
+      router.refresh();
+    },
+    [applyLoadedItems, router],
+  );
+
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await refreshGallery("replace");
+    } catch (error) {
+      console.error("Gallery refresh error:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshGallery, refreshing]);
+
   const handleUploaded = useCallback(async () => {
     try {
-      const response = await fetch("/api/media?limit=100", noStoreFetchInit);
-      if (!response.ok) return;
-      const data = (await response.json()) as MediaListResponse;
-      setItems((current) => {
-        const byId = new Map(current.map((item) => [item.id, item]));
-        for (const item of data.items) {
-          byId.set(item.id, item);
-        }
-        const merged = Array.from(byId.values()).sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime());
-        return applyLoadedItems(merged);
-      });
-      router.refresh();
+      await refreshGallery("merge");
     } catch (error) {
       console.error("Failed to refresh gallery after upload:", error);
     }
-  }, [applyLoadedItems, router]);
+  }, [refreshGallery]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -101,12 +134,20 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-black text-white">
       <header className="sticky top-0 z-30 flex items-center justify-between bg-black/80 px-4 py-3 backdrop-blur-xl">
-        <div>
+        <button
+          type="button"
+          onClick={() => void handleRefresh()}
+          disabled={refreshing}
+          aria-label="Refresh gallery"
+          className="-ml-1 rounded-lg px-1 py-0.5 text-left transition-colors active:bg-white/10 disabled:opacity-60"
+        >
           <h1 className="text-lg font-semibold tracking-tight">Photos</h1>
           <p className="text-xs text-white/50">
-            {items.length.toLocaleString()} loaded{cursor != null ? "+" : ""}
+            {refreshing
+              ? "Refreshing…"
+              : `${items.length.toLocaleString()} loaded${cursor != null ? "+" : ""}`}
           </p>
-        </div>
+        </button>
         <button
           type="button"
           onClick={() => void handleLogout()}
