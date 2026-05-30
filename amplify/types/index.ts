@@ -138,3 +138,7 @@ export type MediaListResponse = {
   items: MediaItem[];
   nextCursor: string | null;
 };
+
+export type LatestMediaResponse = {
+  latestTakenAt: string | null;
+};

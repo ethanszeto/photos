@@ -139,7 +139,7 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
         )}
       </div>
 
-      <UploadFAB onUploaded={handleUploaded} />
+      <UploadFAB onUploaded={handleUploaded} latestTakenAt={items[0]?.takenAt ?? null} />
 
       {viewerIndex != null && <MediaViewer items={items} initialIndex={viewerIndex} onClose={() => setViewerIndex(null)} />}
     </div>

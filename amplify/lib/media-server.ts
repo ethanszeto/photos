@@ -135,3 +135,9 @@ export async function fetchMediaPage(options: FetchMediaPageOptions = {}): Promi
 
   return { items, nextCursor };
 }
+
+/** Newest `takenAt` in the archive (first page, descending sort). */
+export async function fetchLatestTakenAt(): Promise<string | null> {
+  const page = await fetchMediaPage({ limit: 1 });
+  return page.items[0]?.takenAt ?? null;
+}

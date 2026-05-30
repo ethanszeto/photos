@@ -45,6 +45,58 @@
   .animate-fade-in {
     animation: fade-in 0.2s ease-out;
   }
+
+  @keyframes sheet-backdrop-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes sheet-backdrop-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes sheet-slide-in {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes sheet-slide-out {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(100%);
+    }
+  }
+
+  .animate-sheet-backdrop-in {
+    animation: sheet-backdrop-in 0.32s ease-out forwards;
+  }
+
+  .animate-sheet-backdrop-out {
+    animation: sheet-backdrop-out 0.28s ease-in forwards;
+  }
+
+  .animate-sheet-slide-in {
+    animation: sheet-slide-in 0.38s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+
+  .animate-sheet-slide-out {
+    animation: sheet-slide-out 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
 }
 
 body {
