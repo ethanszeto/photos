@@ -63,26 +63,30 @@ export const handler = async (event) => {
         continue;
       }
 
-      const id = randomUUID(); // media ID
+      const id = randomUUID();
       const now = new Date().toISOString();
-      const exifData = await extractExifData(buffer);
-      const takenAt = exifData.takenAt || object.LastModified?.toISOString() || now;
-      const modifiedAt = exifData.modifiedAt || object.LastModified?.toISOString() || now;
+      const lastModified = object.LastModified?.toISOString() ?? now;
 
-      /**
-       * Generate Thumbnails for Media
-       */
+      // exifr on video/MOV buffers can scan the entire file and hang — images/gifs only.
+      let exifData = { takenAt: null, modifiedAt: null, metadata: {} };
+      if (mediaType === "image" || mediaType === "gif") {
+        exifData = await extractExifData(buffer);
+      }
+
+      const takenAt = exifData.takenAt || lastModified || now;
+      const modifiedAt = exifData.modifiedAt || lastModified || now;
+
       let result;
       if (mediaType === "image") {
         result = await processImage(buffer, id);
-      }
-
-      if (mediaType === "video") {
+      } else if (mediaType === "video") {
         result = await processVideo(buffer, id, videoTempExtension(originalKey));
+      } else if (mediaType === "gif") {
+        result = await processGif(buffer, id);
       }
 
-      if (mediaType === "gif") {
-        result = await processGif(buffer, id);
+      if (!result?.small || !result?.medium) {
+        throw new Error(`Thumbnail generation failed for ${originalKey} (${mediaType})`);
       }
 
       /**
@@ -115,8 +119,8 @@ export const handler = async (event) => {
         uploadedAt: now,
         modifiedAt,
         mimeType: contentType,
-        image_metadata: exifData.metadata,
-        video_metadata: result.video_metadata,
+        image_metadata: mediaType === "video" ? {} : exifData.metadata,
+        video_metadata: mediaType === "video" ? (result.video_metadata ?? {}) : undefined,
       };
 
       await dynamo.send(

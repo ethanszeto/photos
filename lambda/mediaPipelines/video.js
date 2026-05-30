@@ -47,11 +47,21 @@ export default async function processVideo(buffer, photoId, extension = "mp4") {
     console.warn("ffprobe metadata failed:", err);
   }
 
-  const midTime = duration ? duration / 2 : 1;
-  const midTimestamp = new Date(midTime * 1000).toISOString().substring(11, 23); // HH:MM:SS.mmm format
+  const seekSeconds = duration && duration > 0 ? Math.max(0, duration / 2) : 0;
 
-  // extract thumbnail from middle of video
-  await execFileAsync("ffmpeg", ["-i", inputPath, "-auto-orient", "-ss", midTimestamp, "-vframes", "1", "-q:v", "3", framePath]);
+  // -ss before -i for fast seek; numeric seconds (not ISO time strings)
+  await execFileAsync("ffmpeg", [
+    "-ss",
+    String(seekSeconds),
+    "-i",
+    inputPath,
+    "-frames:v",
+    "1",
+    "-q:v",
+    "3",
+    "-y",
+    framePath,
+  ]);
 
   const frameBuffer = await readFile(framePath);
 

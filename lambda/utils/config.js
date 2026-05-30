@@ -1,4 +1,3 @@
-import { promisify } from "util";
 import { execFile } from "child_process";
 
 export const THUMBNAIL_BUCKET = process.env.THUMBNAIL_BUCKET;
@@ -12,4 +11,19 @@ export const SHARP_OPTIONS = {
   failOn: "none",
 };
 
-export const execFileAsync = promisify(execFile);
+/** Prevent ffmpeg/ffprobe from hanging until Lambda/SQS visibility timeout. */
+const EXEC_TIMEOUT_MS = 120_000;
+
+export function execFileAsync(cmd, args, timeoutMs = EXEC_TIMEOUT_MS) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      cmd,
+      args,
+      { timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 },
+      (err, stdout, stderr) => {
+        if (err) reject(err);
+        else resolve({ stdout: stdout?.toString() ?? "", stderr: stderr?.toString() ?? "" });
+      },
+    );
+  });
+}
