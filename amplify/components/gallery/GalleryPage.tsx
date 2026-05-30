@@ -82,9 +82,7 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
         for (const item of data.items) {
           byId.set(item.id, item);
         }
-        const merged = Array.from(byId.values()).sort(
-          (a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime(),
-        );
+        const merged = Array.from(byId.values()).sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime());
         return applyLoadedItems(merged);
       });
     } catch (error) {
@@ -121,9 +119,7 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
         {items.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center px-6 pb-28 text-center">
             <p className="text-lg font-medium text-white/80">No Photos Yet</p>
-            <p className="mt-2 max-w-xs text-sm text-white/50">
-              Tap the upload button to add your first photo.
-            </p>
+            <p className="mt-2 max-w-xs text-sm text-white/50">Tap the upload button to add your first photo.</p>
           </div>
         ) : (
           <div className="h-full" data-gallery-scroll-wrapper>

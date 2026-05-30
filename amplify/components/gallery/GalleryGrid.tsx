@@ -56,7 +56,15 @@ function LoadMoreSentinel({
   );
 }
 
-function GalleryGridInner({ items, scrollContainerRef, gridRef, onSelect, onLoadMore, hasMore, loadingMore }: GalleryGridInnerProps) {
+function GalleryGridInner({
+  items,
+  scrollContainerRef,
+  gridRef,
+  onSelect,
+  onLoadMore,
+  hasMore,
+  loadingMore,
+}: GalleryGridInnerProps) {
   const { columns, useMediumThumbnail } = useZoom();
 
   return (

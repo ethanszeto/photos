@@ -119,13 +119,7 @@ export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) 
 
       <div className="flex flex-1 items-center justify-center px-2 pb-6">
         {item.mediaType === "video" ? (
-          <video
-            key={item.id}
-            src={item.originalUrl}
-            controls
-            playsInline
-            className="max-h-full max-w-full object-contain"
-          />
+          <video key={item.id} src={item.originalUrl} controls playsInline className="max-h-full max-w-full object-contain" />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -143,9 +137,7 @@ export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) 
           dateStyle: "medium",
           timeStyle: "short",
         })}
-        {item.mediaType === "video" && item.duration != null && (
-          <span className="ml-2">· {formatDuration(item.duration)}</span>
-        )}
+        {item.mediaType === "video" && item.duration != null && <span className="ml-2">· {formatDuration(item.duration)}</span>}
       </footer>
     </div>
   );

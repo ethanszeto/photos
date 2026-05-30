@@ -76,9 +76,7 @@ export function UploadFAB({ onUploaded, latestTakenAt: latestTakenAtHint }: Uplo
             setUploads((current) => current.map((item) => (item.id === id ? { ...item, progress } : item)));
           });
 
-          setUploads((current) =>
-            current.map((item) => (item.id === id ? { ...item, progress: 100, status: "done" } : item)),
-          );
+          setUploads((current) => current.map((item) => (item.id === id ? { ...item, progress: 100, status: "done" } : item)));
           onUploaded(result);
 
           setTimeout(() => {
@@ -86,9 +84,7 @@ export function UploadFAB({ onUploaded, latestTakenAt: latestTakenAtHint }: Uplo
           }, 2000);
         } catch (error) {
           const message = error instanceof Error ? error.message : "Upload failed";
-          setUploads((current) =>
-            current.map((item) => (item.id === id ? { ...item, status: "error", error: message } : item)),
-          );
+          setUploads((current) => current.map((item) => (item.id === id ? { ...item, status: "error", error: message } : item)));
         }
       }
     },
@@ -106,9 +102,7 @@ export function UploadFAB({ onUploaded, latestTakenAt: latestTakenAtHint }: Uplo
         fileArray = filterFilesNewerThan(fileArray, since);
         if (fileArray.length === 0) {
           setStatusMessage(
-            since
-              ? "No selected photos are newer than your latest backed-up photo."
-              : "No supported photos were selected.",
+            since ? "No selected photos are newer than your latest backed-up photo." : "No supported photos were selected.",
           );
           setTimeout(() => setStatusMessage(null), 4000);
           if (inputRef.current) inputRef.current.value = "";
