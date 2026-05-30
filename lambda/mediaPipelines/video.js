@@ -2,8 +2,9 @@ import sharp from "sharp";
 import { writeFile, readFile } from "fs/promises";
 import { execFileAsync } from "../utils/config.js";
 
-export default async function processVideo(buffer, photoId) {
-  const inputPath = `/tmp/${photoId}`;
+export default async function processVideo(buffer, photoId, extension = "mp4") {
+  const safeExt = extension.replace(/[^a-z0-9]/gi, "") || "mp4";
+  const inputPath = `/tmp/${photoId}.${safeExt}`;
   const framePath = `/tmp/${photoId}.jpg`;
 
   await writeFile(inputPath, buffer);

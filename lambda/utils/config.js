@@ -9,6 +9,7 @@ export const CLOUDFRONT_ORIGINAL_DOMAIN = process.env.CLOUDFRONT_ORIGINAL_DOMAIN
 
 export const SHARP_OPTIONS = {
   limitInputPixels: 10000 * 10000,
+  failOn: "none",
 };
 
 export const execFileAsync = promisify(execFile);

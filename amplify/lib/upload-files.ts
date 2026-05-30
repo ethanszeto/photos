@@ -1,8 +1,6 @@
-const IMAGE_NAME_PATTERN = /\.(jpe?g|png|heic|heif)$/i;
+export { isSelectableUploadFile } from "@/lib/media-types";
 
-export function isSelectableUploadFile(file: File): boolean {
-  return file.type.startsWith("image/") || IMAGE_NAME_PATTERN.test(file.name);
-}
+import { isSelectableUploadFile } from "@/lib/media-types";
 
 export function filterSelectableFiles(files: Iterable<File>): File[] {
   return Array.from(files).filter(isSelectableUploadFile);

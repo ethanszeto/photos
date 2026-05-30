@@ -1,9 +1,8 @@
+import { isSupportedUploadMimeType, resolveUploadMimeType } from "@/lib/media-types";
 import type { UploadInitResponse, UploadResult } from "@/types";
 
-const SUPPORTED_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/heic", "image/heif"]);
-
-export function isSupportedImageType(type: string): boolean {
-  return SUPPORTED_TYPES.has(type.split(";")[0].trim().toLowerCase());
+export function isSupportedUploadType(file: File): boolean {
+  return resolveUploadMimeType(file) !== null;
 }
 
 export async function initUpload(contentType: string): Promise<UploadInitResponse> {
@@ -24,9 +23,9 @@ export async function initUpload(contentType: string): Promise<UploadInitRespons
 }
 
 export async function uploadFileToS3(file: File, onProgress?: (progress: number) => void): Promise<UploadResult> {
-  const contentType = file.type || "image/jpeg";
-  if (!isSupportedImageType(contentType)) {
-    throw new Error(`Unsupported file type: ${contentType || "unknown"}`);
+  const contentType = resolveUploadMimeType(file);
+  if (!contentType || !isSupportedUploadMimeType(contentType)) {
+    throw new Error(`Unsupported file type: ${file.type || file.name || "unknown"}`);
   }
 
   const { uploadUrl, photoId } = await initUpload(contentType);

@@ -1,5 +1,5 @@
 import extractExifData from "./utils/extractExifData.js";
-import getMediaType from "./utils/getMediaType.js";
+import getMediaType, { resolveContentType, videoTempExtension } from "./utils/mediaTypes.js";
 import processGif from "./mediaPipelines/gif.js";
 import processImage from "./mediaPipelines/image.js";
 import processVideo from "./mediaPipelines/video.js";
@@ -55,8 +55,8 @@ export const handler = async (event) => {
       }
 
       const buffer = Buffer.from(await object.Body.transformToByteArray());
-      const contentType = object.ContentType || "";
-      const mediaType = getMediaType(contentType);
+      const contentType = resolveContentType(object.ContentType || "", originalKey);
+      const mediaType = getMediaType(contentType, originalKey);
 
       if (mediaType === "unknown") {
         console.log("Unsupported media type:", contentType);
@@ -78,7 +78,7 @@ export const handler = async (event) => {
       }
 
       if (mediaType === "video") {
-        result = await processVideo(buffer, id);
+        result = await processVideo(buffer, id, videoTempExtension(originalKey));
       }
 
       if (mediaType === "gif") {

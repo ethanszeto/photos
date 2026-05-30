@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { UploadOptionsOverlay } from "@/components/gallery/UploadOptionsOverlay";
 import { noStoreFetchInit } from "@/lib/no-store";
+import { UPLOAD_ACCEPT } from "@/lib/media-types";
 import { filterFilesNewerThan, filterSelectableFiles } from "@/lib/upload-files";
 import { uploadFileToS3 } from "@/lib/upload-client";
 import type { LatestMediaResponse, UploadResult } from "@/types";
@@ -234,7 +235,7 @@ export function UploadFAB({ onUploaded, latestTakenAt: latestTakenAtHint }: Uplo
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/heic,image/heif,.heic,.heif"
+        accept={UPLOAD_ACCEPT}
         multiple
         className="hidden"
         onChange={(e) => void handleFiles(e.target.files)}

@@ -1,6 +1,9 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
+import { extensionFromContentType } from "@/lib/media-types";
+
+export { extensionFromContentType } from "@/lib/media-types";
 
 const PRESIGN_UPLOAD_EXPIRY_SECONDS = 300;
 
@@ -30,19 +33,6 @@ export function getBucketName(): string {
     throw new Error("S3_BUCKET_NAME is not configured");
   }
   return bucket;
-}
-
-const MIME_TO_EXT: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/jpg": "jpg",
-  "image/png": "png",
-  "image/heic": "heic",
-  "image/heif": "heif",
-};
-
-export function extensionFromContentType(contentType: string): string | null {
-  const normalized = contentType.split(";")[0].trim().toLowerCase();
-  return MIME_TO_EXT[normalized] ?? null;
 }
 
 export function buildOriginalKey(photoId: string, extension: string): string {

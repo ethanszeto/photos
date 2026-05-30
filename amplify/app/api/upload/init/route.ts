@@ -12,7 +12,13 @@ export async function POST(request: Request) {
     const contentType = body.contentType?.trim() ?? "";
 
     if (!contentType || !extensionFromContentType(contentType)) {
-      return NextResponse.json({ error: "Unsupported content type. Use JPEG, PNG, or HEIC." }, { status: 400 });
+      return NextResponse.json(
+        {
+          error:
+            "Unsupported content type. Use JPEG, PNG, HEIC/HEIF, AVIF, SVG, RAW, GIF, or video (MP4, MOV, MKV).",
+        },
+        { status: 400 },
+      );
     }
 
     const result = await createPresignedUpload(contentType);
