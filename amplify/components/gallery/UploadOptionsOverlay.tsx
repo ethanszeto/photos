@@ -102,7 +102,11 @@ export function UploadOptionsOverlay({ latestTakenAt, loadingLatest, onSelectPho
   const sinceLabel = latestTakenAt ? formatTakenAtLabel(latestTakenAt) : null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col justify-end" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-[60] box-border flex flex-col justify-end pt-[env(safe-area-inset-top,0px)] pr-[env(safe-area-inset-right,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)]"
+      role="dialog"
+      aria-modal="true"
+    >
       {/* Backdrop */}
       <button
         type="button"
@@ -133,7 +137,7 @@ export function UploadOptionsOverlay({ latestTakenAt, loadingLatest, onSelectPho
           <div className="h-1 w-10 rounded-full bg-white/30" />
         </div>
 
-        <div className="px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+        <div className="px-4 pb-5">
           <h2 className="text-center text-lg font-semibold text-white">Add Photos</h2>
 
           <p className="mt-1 text-center text-sm text-white/50">Choose how you want to upload</p>

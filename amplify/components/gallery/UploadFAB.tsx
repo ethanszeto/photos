@@ -162,13 +162,13 @@ export function UploadFAB({ onUploaded, latestTakenAt: latestTakenAtHint }: Uplo
       )}
 
       {statusMessage && (
-        <div className="fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-md rounded-2xl border border-white/10 bg-zinc-900/95 px-4 py-3 text-center text-sm text-white/80 shadow-xl backdrop-blur-md">
+        <div className="fixed left-4 right-4 z-40 mx-auto max-w-md rounded-2xl border border-white/10 bg-zinc-900/95 px-4 py-3 text-center text-sm text-white/80 shadow-xl backdrop-blur-md bottom-[calc(6rem+env(safe-area-inset-bottom,0px))]">
           {statusMessage}
         </div>
       )}
 
       {uploads.length > 0 && (
-        <div className="fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-md space-y-2">
+        <div className="fixed left-4 right-4 z-40 mx-auto max-w-md space-y-2 bottom-[calc(6rem+env(safe-area-inset-bottom,0px))]">
           {uploads.map((item) => (
             <div key={item.id} className="rounded-2xl border border-white/10 bg-zinc-900/95 px-4 py-3 shadow-xl backdrop-blur-md">
               <div className="flex items-center justify-between gap-2">
@@ -195,7 +195,7 @@ export function UploadFAB({ onUploaded, latestTakenAt: latestTakenAtHint }: Uplo
         type="button"
         disabled={busy}
         onClick={handleFabClick}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-white/15 text-[28px] font-light text-white shadow-lg ring-1 ring-white/10 backdrop-blur-xl transition-transform active:scale-95 disabled:opacity-50"
+        className="fixed right-[max(1.5rem,env(safe-area-inset-right,0px))] bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] z-50 flex h-14 w-14 items-center justify-center rounded-full bg-white/15 text-[28px] font-light text-white shadow-lg ring-1 ring-white/10 backdrop-blur-xl transition-transform active:scale-95 disabled:opacity-50"
         aria-label="Upload photos"
       >
         +

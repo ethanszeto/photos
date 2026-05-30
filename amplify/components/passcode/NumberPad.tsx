@@ -13,9 +13,11 @@ const KEYS = [
   ["", "0", "delete"],
 ] as const;
 
+const KEY_SIZE = "h-[84px] w-[84px]";
+
 export function NumberPad({ onDigit, onDelete, disabled }: NumberPadProps) {
   return (
-    <div className="grid w-full max-w-[320px] grid-cols-3 gap-4 px-6">
+    <div className="mx-auto grid w-full max-w-[360px] grid-cols-3 gap-5 px-6">
       {KEYS.flat().map((key, index) => {
         if (key === "") {
           return <div key={`spacer-${index}`} aria-hidden />;
@@ -28,7 +30,7 @@ export function NumberPad({ onDigit, onDelete, disabled }: NumberPadProps) {
               type="button"
               disabled={disabled}
               onClick={onDelete}
-              className="flex h-[72px] items-center justify-center rounded-full text-[17px] font-medium text-white/90 transition-transform active:scale-90 disabled:opacity-40"
+              className={`flex ${KEY_SIZE} items-center justify-center rounded-full text-lg font-medium text-white/90 transition-transform active:scale-90 disabled:opacity-40`}
               aria-label="Delete"
             >
               Delete
@@ -42,7 +44,7 @@ export function NumberPad({ onDigit, onDelete, disabled }: NumberPadProps) {
             type="button"
             disabled={disabled}
             onClick={() => onDigit(key)}
-            className="flex h-[72px] w-[72px] items-center justify-center justify-self-center rounded-full bg-white/10 text-[28px] font-light text-white backdrop-blur-sm transition-all duration-150 hover:bg-white/15 active:scale-90 active:bg-white/25 disabled:opacity-40"
+            className={`flex ${KEY_SIZE} items-center justify-center justify-self-center rounded-full bg-white/10 text-[32px] font-light text-white backdrop-blur-sm transition-all duration-150 hover:bg-white/15 active:scale-90 active:bg-white/25 disabled:opacity-40`}
           >
             {key}
           </button>

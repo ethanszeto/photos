@@ -96,7 +96,7 @@ export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-black"
+      className="fixed inset-0 z-50 box-border flex flex-col bg-black pt-[env(safe-area-inset-top,0px)] pr-[env(safe-area-inset-right,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)]"
       role="dialog"
       aria-modal="true"
       aria-label="Media viewer"
@@ -115,7 +115,7 @@ export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) 
         else goPrev();
       }}
     >
-      <header className="shrink-0 bg-gradient-to-b from-black/80 via-black/50 to-transparent px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white">
+      <header className="shrink-0 bg-gradient-to-b from-black/80 via-black/50 to-transparent px-4 py-3 text-white">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -136,7 +136,7 @@ export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) 
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 items-center justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div className="flex min-h-0 flex-1 items-center justify-center px-2">
         {item.mediaType === "video" ? (
           <video key={item.id} src={item.originalUrl} controls playsInline className="max-h-full max-w-full object-contain" />
         ) : (
