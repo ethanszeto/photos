@@ -1,14 +1,17 @@
-import { GalleryView } from "@/components/gallery/GalleryView";
-import { fetchGalleryPhotos } from "@/lib/gallery-server";
+import { GalleryPage } from "@/components/gallery/GalleryPage";
+import { fetchMediaPage } from "@/lib/media-server";
 
-export default async function GalleryPage() {
-  let initialPhotos: Awaited<ReturnType<typeof fetchGalleryPhotos>> = [];
+export default async function GalleryRoute() {
+  let initialItems: Awaited<ReturnType<typeof fetchMediaPage>>["items"] = [];
+  let initialCursor: string | null = null;
 
   try {
-    initialPhotos = await fetchGalleryPhotos();
+    const page = await fetchMediaPage({ limit: 100 });
+    initialItems = page.items;
+    initialCursor = page.nextCursor;
   } catch (error) {
     console.error("Gallery SSR load error:", error);
   }
 
-  return <GalleryView initialPhotos={initialPhotos} />;
+  return <GalleryPage initialItems={initialItems} initialCursor={initialCursor} />;
 }

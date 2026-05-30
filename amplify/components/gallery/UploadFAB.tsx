@@ -2,10 +2,10 @@
 
 import { useRef, useState } from "react";
 import { uploadFileToS3 } from "@/lib/upload-client";
-import type { GalleryPhoto } from "@/types";
+import type { UploadResult } from "@/types";
 
 type UploadFABProps = {
-  onUploaded: (photo: GalleryPhoto) => void;
+  onUploaded: (result: UploadResult) => void;
 };
 
 type UploadItem = {
@@ -31,12 +31,12 @@ export function UploadFAB({ onUploaded }: UploadFABProps) {
       setUploads((current) => [...current, { id, name: file.name, progress: 0, status: "uploading" }]);
 
       try {
-        const photo = await uploadFileToS3(file, (progress) => {
+        const result = await uploadFileToS3(file, (progress) => {
           setUploads((current) => current.map((item) => (item.id === id ? { ...item, progress } : item)));
         });
 
         setUploads((current) => current.map((item) => (item.id === id ? { ...item, progress: 100, status: "done" } : item)));
-        onUploaded(photo);
+        onUploaded(result);
 
         setTimeout(() => {
           setUploads((current) => current.filter((item) => item.id !== id));

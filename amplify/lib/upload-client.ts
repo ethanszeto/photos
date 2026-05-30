@@ -1,4 +1,4 @@
-import type { GalleryPhoto, UploadInitResponse } from "@/types";
+import type { UploadInitResponse, UploadResult } from "@/types";
 
 const SUPPORTED_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/heic", "image/heif"]);
 
@@ -23,13 +23,13 @@ export async function initUpload(contentType: string): Promise<UploadInitRespons
   return response.json() as Promise<UploadInitResponse>;
 }
 
-export async function uploadFileToS3(file: File, onProgress?: (progress: number) => void): Promise<GalleryPhoto> {
+export async function uploadFileToS3(file: File, onProgress?: (progress: number) => void): Promise<UploadResult> {
   const contentType = file.type || "image/jpeg";
   if (!isSupportedImageType(contentType)) {
     throw new Error(`Unsupported file type: ${contentType || "unknown"}`);
   }
 
-  const { uploadUrl, photoId, key } = await initUpload(contentType);
+  const { uploadUrl, photoId } = await initUpload(contentType);
 
   await new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -54,11 +54,6 @@ export async function uploadFileToS3(file: File, onProgress?: (progress: number)
     xhr.send(file);
   });
 
-  const urlResponse = await fetch(`/api/gallery/url?key=${encodeURIComponent(key)}`);
-  if (!urlResponse.ok) {
-    throw new Error("Failed to resolve image URL");
-  }
-  const { url } = (await urlResponse.json()) as { url: string };
-
-  return { photoId, key, url };
+  // Media URLs are written to DynamoDB by the processing pipeline after upload.
+  return { id: photoId };
 }

@@ -9,7 +9,13 @@ import { randomUUID } from "crypto";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
-import { AWS_REGION, THUMBNAIL_BUCKET, TABLE_NAME } from "./utils/config.js";
+import {
+  AWS_REGION,
+  THUMBNAIL_BUCKET,
+  TABLE_NAME,
+  CLOUDFRONT_THUMBNAIL_DOMAIN,
+  CLOUDFRONT_ORIGINAL_DOMAIN,
+} from "./utils/config.js";
 
 const s3 = new S3Client({ region: AWS_REGION });
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGION }));
@@ -17,12 +23,7 @@ const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGI
 export const handler = async (event) => {
   try {
     for (const record of event.Records || []) {
-      console.log("RAW RECORD:", JSON.stringify(record, null, 2));
-
       const body = JSON.parse(record.body);
-
-      console.log("PARSED BODY:", JSON.stringify(body, null, 2));
-
       const s3Record = body.Records?.[0];
 
       if (!s3Record) {
@@ -31,7 +32,6 @@ export const handler = async (event) => {
       }
 
       const originalBucket = s3Record.s3.bucket.name;
-
       const originalKey = decodeURIComponent(s3Record.s3.object.key.replace(/\+/g, " "));
 
       // prevent recursion
@@ -96,6 +96,10 @@ export const handler = async (event) => {
         upload(s3, THUMBNAIL_BUCKET, mediumKey, result.medium, "image/webp"),
       ]);
 
+      const smallUrl = `${CLOUDFRONT_THUMBNAIL_DOMAIN}${smallKey}`;
+      const mediumUrl = `${CLOUDFRONT_THUMBNAIL_DOMAIN}${mediumKey}`;
+      const originalUrl = `${CLOUDFRONT_ORIGINAL_DOMAIN}${originalKey}`;
+
       /**
        * Upload unified record to DynamoDB
        */
@@ -104,11 +108,9 @@ export const handler = async (event) => {
         SK: `${takenAt}#${id}`,
         id,
         mediaType,
-        originalKey,
-        originalBucket,
-        smallKey,
-        mediumKey,
-        thumbnailBucket: THUMBNAIL_BUCKET,
+        smallUrl,
+        mediumUrl,
+        originalUrl,
         takenAt,
         uploadedAt: now,
         modifiedAt,
