@@ -78,13 +78,7 @@ export function PasscodeLock({ redirectTo = "/gallery" }: PasscodeLockProps) {
 
   return (
     <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-black">
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-zinc-900/80 via-black to-black" aria-hidden />
-      <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(80,80,120,0.25),_transparent_60%)]"
-        aria-hidden
-      />
-
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-8 px-6 pt-4">
+      <div className="flex flex-1 flex-col items-center justify-center gap-8 px-6 pt-4">
         <div className="text-center">
           <p className="text-sm font-medium tracking-wide text-white/60">Photos</p>
           <h1 className="mt-2 text-xl font-semibold text-white">Enter Passcode</h1>
@@ -93,7 +87,7 @@ export function PasscodeLock({ redirectTo = "/gallery" }: PasscodeLockProps) {
         {error && <p className="animate-fade-in text-sm font-medium text-red-400">{error}</p>}
       </div>
 
-      <div className="relative z-10 w-full shrink-0 pb-20">
+      <div className="w-full shrink-0 pb-20">
         <NumberPad onDigit={handleDigit} onDelete={handleDelete} disabled={submitting} />
       </div>
     </div>
