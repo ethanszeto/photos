@@ -27,9 +27,9 @@ let docClient: DynamoDBDocumentClient | null = null;
 
 function getDocClient(): DynamoDBDocumentClient {
   if (!docClient) {
-    const region = process.env.AWS_REGION;
-    const accessKeyId = process.env.AWS_DYNAMO_PHOTOS_KEY;
-    const secretAccessKey = process.env.AWS_DYNAMO_PHOTOS_SECRET;
+    const region = process.env.REGION;
+    const accessKeyId = process.env.DYNAMO_PHOTOS_KEY;
+    const secretAccessKey = process.env.DYNAMO_PHOTOS_SECRET;
 
     if (!region || !accessKeyId || !secretAccessKey) {
       throw new Error("AWS credentials are not configured");
@@ -47,7 +47,7 @@ function getDocClient(): DynamoDBDocumentClient {
 }
 
 function getTableName(): string {
-  const table = process.env.PHOTO_TABLE ?? process.env.AWS_DYNAMODB_TABLE_NAME;
+  const table = process.env.PHOTO_TABLE ?? process.env.DYNAMODB_TABLE_NAME;
   if (!table) {
     throw new Error("PHOTO_TABLE is not configured");
   }

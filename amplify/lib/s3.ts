@@ -8,9 +8,9 @@ let s3Client: S3Client | null = null;
 
 function getS3Client(): S3Client {
   if (!s3Client) {
-    const region = process.env.AWS_REGION;
-    const accessKeyId = process.env.AWS_S3_PHOTO_ORIGINALS_KEY;
-    const secretAccessKey = process.env.AWS_S3_PHOTO_ORIGINALS_SECRET;
+    const region = process.env.REGION;
+    const accessKeyId = process.env.S3_PHOTO_ORIGINALS_KEY;
+    const secretAccessKey = process.env.S3_PHOTO_ORIGINALS_SECRET;
 
     if (!region || !accessKeyId || !secretAccessKey) {
       throw new Error("AWS credentials are not configured");
