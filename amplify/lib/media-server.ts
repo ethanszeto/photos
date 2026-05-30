@@ -1,8 +1,8 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DEFAULT_PAGE_SIZE } from "@/lib/media-constants";
 import type { DynamoPhotoItem, MediaItem } from "@/types";
 
-export const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGE_SIZE = 200;
 
 /**

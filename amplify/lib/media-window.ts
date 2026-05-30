@@ -1,5 +1,4 @@
-import { MAX_LOADED_ITEMS } from "@/lib/media-constants";
-import { DEFAULT_PAGE_SIZE } from "@/lib/media-server";
+import { DEFAULT_PAGE_SIZE, MAX_LOADED_ITEMS } from "@/lib/media-constants";
 import type { MediaItem } from "@/types";
 
 export type TrimLoadedItemsResult = {
