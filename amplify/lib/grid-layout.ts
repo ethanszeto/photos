@@ -31,11 +31,19 @@ export function getCenterItemIndex(
   return Math.min(index, itemCount - 1);
 }
 
-/** Rows to keep mounted above/below the viewport (~2 screens each side). */
+/** Rows mounted above/below the visible slice (tanstack virtual overscan). */
 export function getOverscanRowCount(viewportHeight: number, rowHeight: number): number {
-  if (rowHeight <= 0) return 8;
+  if (rowHeight <= 0) return 10;
   const rowsInView = Math.max(1, Math.ceil(viewportHeight / rowHeight));
-  return rowsInView * 2;
+  // ~2.5 screens each side — enough for medium-speed flick scroll without huge DOM cost.
+  const overscan = Math.ceil(rowsInView * 2.5);
+  return Math.min(28, Math.max(10, overscan));
+}
+
+/** IntersectionObserver rootMargin for thumbnail prefetch (vertical only). */
+export function getImagePrefetchRootMargin(viewportHeight: number): string {
+  const px = Math.min(1200, Math.max(640, Math.round(viewportHeight * 0.9)));
+  return `${px}px 0px`;
 }
 
 /** Scroll offset removed when trimming N items from the start of a newest-first list. */

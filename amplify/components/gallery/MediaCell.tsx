@@ -4,13 +4,13 @@ import { memo, useEffect, useRef, useState, type RefObject } from "react";
 import { getAspectRatioStyle } from "@/lib/grid-layout";
 import type { MediaItem } from "@/types";
 
-const IMAGE_ROOT_MARGIN = "480px 0px";
-
 type MediaCellProps = {
   item: MediaItem;
   cellSize: number;
   useMediumThumbnail: boolean;
   scrollRootRef: RefObject<HTMLElement | null>;
+  /** IntersectionObserver prefetch band — from getImagePrefetchRootMargin(viewportHeight). */
+  imagePrefetchMargin: string;
   onSelect: (item: MediaItem) => void;
 };
 
@@ -29,6 +29,7 @@ export const MediaCell = memo(function MediaCell({
   cellSize,
   useMediumThumbnail,
   scrollRootRef,
+  imagePrefetchMargin,
   onSelect,
 }: MediaCellProps) {
   const shellRef = useRef<HTMLButtonElement>(null);
@@ -46,12 +47,12 @@ export const MediaCell = memo(function MediaCell({
           setShouldLoadImage(true);
         }
       },
-      { root, rootMargin: IMAGE_ROOT_MARGIN, threshold: 0 },
+      { root, rootMargin: imagePrefetchMargin, threshold: 0 },
     );
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, [scrollRootRef]);
+  }, [scrollRootRef, imagePrefetchMargin]);
 
   return (
     <button
@@ -71,7 +72,7 @@ export const MediaCell = memo(function MediaCell({
           <img
             src={thumbnailUrl}
             alt=""
-            loading="lazy"
+            loading="eager"
             decoding="async"
             draggable={false}
             className="h-full w-full object-cover"

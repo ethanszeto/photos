@@ -17,6 +17,7 @@ import { GRID_GAP_PX } from "@/lib/media-constants";
 import {
   getCenterItemIndex,
   getCellWidth,
+  getImagePrefetchRootMargin,
   getOverscanRowCount,
   getRowCount,
   getRowHeight,
@@ -63,6 +64,7 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
   const rowHeight = getRowHeight(containerWidth, columns);
   const rowCount = getRowCount(items.length, columns);
   const overscan = getOverscanRowCount(viewportHeight, rowHeight);
+  const imagePrefetchMargin = getImagePrefetchRootMargin(viewportHeight);
 
   useEffect(() => {
     const element = parentRef.current;
@@ -206,6 +208,7 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
                     cellSize={cellWidth}
                     useMediumThumbnail={useMediumThumbnail}
                     scrollRootRef={parentRef}
+                    imagePrefetchMargin={imagePrefetchMargin}
                     onSelect={onSelect}
                   />
                 );
