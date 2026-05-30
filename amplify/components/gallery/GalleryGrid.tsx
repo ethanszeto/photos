@@ -105,7 +105,7 @@ export function GalleryGrid({ items, gridRef, onSelect, onLoadMore, hasMore, loa
       <div
         ref={scrollContainerRef}
         data-gallery-scroll
-        className="h-full min-h-0 flex-1 overflow-y-auto overscroll-contain pb-28 [-webkit-overflow-scrolling:touch]"
+        className="h-full min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-28 [-webkit-overflow-scrolling:touch]"
         style={{ contain: "strict", touchAction: "pan-y", overflowAnchor: "none" }}
       >
         <GalleryGridInner

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
+import { DocumentScrollLock } from "@/components/pwa/DocumentScrollLock";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 import "./globals.css";
 
@@ -46,6 +47,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-dvh bg-black font-sans text-white antialiased">
         <div id="app-shell">{children}</div>
+        <DocumentScrollLock />
         <ServiceWorkerRegister />
       </body>
     </html>

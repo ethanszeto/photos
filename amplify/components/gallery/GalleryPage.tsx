@@ -97,7 +97,7 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col bg-black text-white">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-black text-white">
       <header className="sticky top-0 z-30 flex items-center justify-between bg-black/80 px-4 py-3 backdrop-blur-xl">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Photos</h1>

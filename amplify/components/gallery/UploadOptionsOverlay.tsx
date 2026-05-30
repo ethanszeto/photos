@@ -173,7 +173,7 @@ export function UploadOptionsOverlay({ latestTakenAt, loadingLatest, onSelectPho
   const sinceLabel = latestTakenAt ? formatTakenAtLabel(latestTakenAt) : null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col justify-end" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[60] flex flex-col justify-end" data-upload-sheet role="dialog" aria-modal="true">
       <button
         ref={backdropRef}
         type="button"
@@ -184,7 +184,7 @@ export function UploadOptionsOverlay({ latestTakenAt, loadingLatest, onSelectPho
 
       <div
         ref={sheetRef}
-        className="relative z-10 w-full rounded-t-3xl border border-white/10 bg-zinc-900/95 shadow-2xl backdrop-blur-xl"
+        className="relative z-10 w-full rounded-3xl border border-white/10 bg-zinc-900/95 shadow-2xl backdrop-blur-xl"
         style={{
           transform: `translateY(${getOffscreenY()}px)`,
           willChange: "transform",
