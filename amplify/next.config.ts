@@ -1,6 +1,6 @@
-const nextConfig = {
-  output: "export",
+import type { NextConfig } from "next";
 
+const nextConfig: NextConfig = {
   headers: async () => [
     {
       source: "/sw.js",
