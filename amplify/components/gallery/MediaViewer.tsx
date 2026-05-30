@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronLeft } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MediaItem } from "@/types";
 
@@ -14,6 +15,17 @@ function formatDuration(seconds: number): string {
   const minutes = Math.floor(total / 60);
   const remaining = total % 60;
   return `${minutes}:${remaining.toString().padStart(2, "0")}`;
+}
+
+function formatTakenAtBadge(takenAt: string, duration?: number, isVideo?: boolean): string {
+  const label = new Date(takenAt).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+  if (isVideo && duration != null) {
+    return `${label} · ${formatDuration(duration)}`;
+  }
+  return label;
 }
 
 /** Preload neighboring originals so swipe/keyboard navigation feels instant. */
@@ -103,21 +115,28 @@ export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) 
         else goPrev();
       }}
     >
-      <header className="flex items-center justify-between bg-black/60 px-4 py-3 text-white backdrop-blur-xl">
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-full px-3 py-1.5 text-sm font-medium text-white/90 transition-colors hover:bg-white/10"
-        >
-          Done
-        </button>
-        <p className="text-sm text-white/70">
-          {index + 1} / {items.length}
-        </p>
-        <div className="w-16" aria-hidden />
+      <header className="shrink-0 bg-gradient-to-b from-black/80 via-black/50 to-transparent px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Back"
+            className="-ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/15 text-white active:bg-white/20"
+          >
+            <ChevronLeft className="h-7 w-7 stroke-[2.5]" aria-hidden />
+          </button>
+          <div className="flex min-w-0 flex-1 justify-center px-1">
+            <span className="w-fit max-w-full truncate rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-white/90 backdrop-blur-md">
+              {formatTakenAtBadge(item.takenAt, item.duration, item.mediaType === "video")}
+            </span>
+          </div>
+          <p className="shrink-0 text-sm tabular-nums text-white/70">
+            {index + 1} / {items.length}
+          </p>
+        </div>
       </header>
 
-      <div className="flex flex-1 items-center justify-center px-2 pb-6">
+      <div className="flex min-h-0 flex-1 items-center justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {item.mediaType === "video" ? (
           <video key={item.id} src={item.originalUrl} controls playsInline className="max-h-full max-w-full object-contain" />
         ) : (
@@ -131,14 +150,6 @@ export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) 
           />
         )}
       </div>
-
-      <footer className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-center text-xs text-white/60">
-        {new Date(item.takenAt).toLocaleString(undefined, {
-          dateStyle: "medium",
-          timeStyle: "short",
-        })}
-        {item.mediaType === "video" && item.duration != null && <span className="ml-2">· {formatDuration(item.duration)}</span>}
-      </footer>
     </div>
   );
 }
