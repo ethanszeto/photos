@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { formatTakenAtLabel } from "@/lib/upload-files";
 
 const OPEN_MS = 400;
-const CLOSE_MS = 320;
+const CLOSE_MS = 400;
 const DRAG_THRESHOLD = 72;
 const VELOCITY_DISMISS = 1.2;
 const EASING = "cubic-bezier(0.32, 0.72, 0, 1)";
