@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchMediaPage } from "@/lib/media-server";
+import { NO_STORE_CACHE_CONTROL } from "@/lib/no-store";
 import { isAuthenticatedRequest } from "@/lib/session";
 import type { MediaListResponse } from "@/types";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest): Promise<NextResponse<MediaListResponse | { error: string }>> {
   if (!(await isAuthenticatedRequest(request))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401, headers: { "Cache-Control": NO_STORE_CACHE_CONTROL } },
+    );
   }
 
   const { searchParams } = request.nextUrl;
@@ -15,9 +21,12 @@ export async function GET(request: NextRequest): Promise<NextResponse<MediaListR
 
   try {
     const page = await fetchMediaPage({ cursor, limit });
-    return NextResponse.json(page);
+    return NextResponse.json(page, { headers: { "Cache-Control": NO_STORE_CACHE_CONTROL } });
   } catch (error) {
     console.error("Media list error:", error);
-    return NextResponse.json({ error: "Failed to load media" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to load media" },
+      { status: 500, headers: { "Cache-Control": NO_STORE_CACHE_CONTROL } },
+    );
   }
 }

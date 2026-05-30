@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { UploadOptionsOverlay } from "@/components/gallery/UploadOptionsOverlay";
+import { noStoreFetchInit } from "@/lib/no-store";
 import { filterFilesNewerThan, filterSelectableFiles } from "@/lib/upload-files";
 import { uploadFileToS3 } from "@/lib/upload-client";
 import type { LatestMediaResponse, UploadResult } from "@/types";
@@ -46,7 +47,7 @@ export function UploadFAB({ onUploaded, latestTakenAt: latestTakenAtHint }: Uplo
   const refreshLatestTakenAt = useCallback(async (): Promise<string | null> => {
     setLoadingLatest(true);
     try {
-      const response = await fetch("/api/media/latest");
+      const response = await fetch("/api/media/latest", noStoreFetchInit);
       if (!response.ok) throw new Error("Failed to load latest photo date");
       const data = (await response.json()) as LatestMediaResponse;
       setLatestTakenAt(data.latestTakenAt);

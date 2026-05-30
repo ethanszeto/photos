@@ -7,6 +7,7 @@ import { GalleryGrid } from "@/components/gallery/GalleryGrid";
 import { MediaViewer } from "@/components/gallery/MediaViewer";
 import { UploadFAB } from "@/components/gallery/UploadFAB";
 import type { VirtualizedGridHandle } from "@/components/gallery/VirtualizedGrid";
+import { noStoreFetchInit } from "@/lib/no-store";
 import { trimLoadedItems } from "@/lib/media-window";
 import type { MediaItem, MediaListResponse } from "@/types";
 
@@ -47,7 +48,7 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
     if (!cursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const response = await fetch(`/api/media?cursor=${encodeURIComponent(cursor)}`);
+      const response = await fetch(`/api/media?cursor=${encodeURIComponent(cursor)}`, noStoreFetchInit);
       if (!response.ok) throw new Error("Failed to load more media");
       const data = (await response.json()) as { items: MediaItem[]; nextCursor: string | null };
       setItems((current) => applyLoadedItems([...current, ...data.items]));
@@ -74,7 +75,7 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
 
   const handleUploaded = useCallback(async () => {
     try {
-      const response = await fetch("/api/media?limit=100");
+      const response = await fetch("/api/media?limit=100", noStoreFetchInit);
       if (!response.ok) return;
       const data = (await response.json()) as MediaListResponse;
       setItems((current) => {
@@ -85,10 +86,11 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
         const merged = Array.from(byId.values()).sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime());
         return applyLoadedItems(merged);
       });
+      router.refresh();
     } catch (error) {
       console.error("Failed to refresh gallery after upload:", error);
     }
-  }, [applyLoadedItems]);
+  }, [applyLoadedItems, router]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
