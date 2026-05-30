@@ -2,8 +2,26 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import type { DynamoPhotoItem, MediaItem } from "@/types";
 
-const DEFAULT_PAGE_SIZE = 100;
+export const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGE_SIZE = 200;
+
+/**
+ * Slim projection for gallery list queries — omits bulky EXIF subtrees
+ * (device, GPS, camera, apple, editing, etc.) while keeping geometry + video stats.
+ */
+const MEDIA_LIST_PROJECTION = [
+  "id",
+  "mediaType",
+  "takenAt",
+  "uploadedAt",
+  "modifiedAt",
+  "mimeType",
+  "smallUrl",
+  "mediumUrl",
+  "originalUrl",
+  "image_metadata.geometry",
+  "video_metadata",
+].join(", ");
 
 let docClient: DynamoDBDocumentClient | null = null;
 
@@ -104,6 +122,7 @@ export async function fetchMediaPage(options: FetchMediaPageOptions = {}): Promi
       TableName: getTableName(),
       KeyConditionExpression: "PK = :pk",
       ExpressionAttributeValues: { ":pk": "PHOTOS" },
+      ProjectionExpression: MEDIA_LIST_PROJECTION,
       ScanIndexForward: false,
       Limit: limit,
       ExclusiveStartKey: exclusiveStartKey ?? undefined,

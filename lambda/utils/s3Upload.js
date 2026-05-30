@@ -7,6 +7,7 @@ export default async function upload(s3, bucket, key, body, contentType) {
       Key: key,
       Body: body,
       ContentType: contentType,
+      // Long-lived cache for versioned thumb keys — CloudFront serves from edge.
       CacheControl: "public, max-age=31536000, immutable",
     }),
   );

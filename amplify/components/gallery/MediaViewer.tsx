@@ -103,7 +103,7 @@ export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) 
         else goPrev();
       }}
     >
-      <header className="flex items-center justify-between px-4 py-3 text-white">
+      <header className="flex items-center justify-between bg-black/60 px-4 py-3 text-white backdrop-blur-xl">
         <button
           type="button"
           onClick={onClose}

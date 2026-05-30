@@ -76,7 +76,7 @@ export function UploadFAB({ onUploaded }: UploadFABProps) {
               {item.status === "uploading" && (
                 <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/10">
                   <div
-                    className="h-full rounded-full bg-blue-500 transition-all duration-200"
+                    className="h-full rounded-full bg-white/80 transition-all duration-200"
                     style={{ width: `${item.progress}%` }}
                   />
                 </div>
@@ -91,7 +91,7 @@ export function UploadFAB({ onUploaded }: UploadFABProps) {
         type="button"
         disabled={busy}
         onClick={() => inputRef.current?.click()}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-blue-500 text-2xl text-white shadow-lg shadow-blue-500/30 transition-transform active:scale-95 disabled:opacity-60"
+        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-white/15 text-[28px] font-light text-white shadow-lg ring-1 ring-white/10 backdrop-blur-xl transition-transform active:scale-95 disabled:opacity-50"
         aria-label="Upload photos"
       >
         +

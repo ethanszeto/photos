@@ -1,15 +1,34 @@
 "use client";
 
 import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, type RefObject } from "react";
-import { MediaTile } from "@/components/gallery/MediaTile";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
+import { MediaCell, MediaCellPlaceholder } from "@/components/gallery/MediaCell";
+import { GRID_GAP_PX } from "@/lib/media-constants";
+import {
+  getCenterItemIndex,
+  getCellWidth,
+  getOverscanRowCount,
+  getRowCount,
+  getRowHeight,
+  getScrollOffsetForTrim,
+} from "@/lib/grid-layout";
 import type { MediaItem } from "@/types";
 
-const GRID_GAP_PX = 2;
-
 export type VirtualizedGridHandle = {
-  scrollToItemIndex: (index: number) => void;
+  scrollToItemIndex: (index: number, options?: { align?: "start" | "center"; behavior?: ScrollBehavior }) => void;
   getFirstVisibleItemIndex: () => number;
+  getCenterItemIndex: () => number;
+  preserveScrollAfterTrim: (removedFromStart: number) => void;
   getVirtualizer: () => Virtualizer<HTMLDivElement, Element> | null;
 };
 
@@ -22,54 +41,131 @@ type VirtualizedGridProps = {
   loadMoreSentinel?: React.ReactNode;
 };
 
+type LayoutSnapshot = {
+  columns: number;
+  rowHeight: number;
+  containerWidth: number;
+};
+
 /**
- * Row-based virtualizer — only mounts visible rows plus overscan.
- * Row count = ceil(n / columns), so 25k items at 12 columns ≈ 2,084 rows.
+ * Row virtualizer with fixed row stride (no measureElement).
+ * Scroll height is deterministic; unmounted rows are accounted for in totalSize only.
  */
 export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGridProps>(function VirtualizedGrid(
   { items, columns, useMediumThumbnail, onSelect, parentRef, loadMoreSentinel },
   ref,
 ) {
-  const rowCount = Math.ceil(items.length / columns) || 0;
+  const [containerWidth, setContainerWidth] = useState(360);
+  const [viewportHeight, setViewportHeight] = useState(800);
+  const layoutSnapshot = useRef<LayoutSnapshot | null>(null);
 
-  const estimateRowHeight = useCallback(() => {
-    const containerWidth = parentRef.current?.clientWidth ?? 360;
-    const cellWidth = (containerWidth - GRID_GAP_PX * (columns - 1)) / columns;
-    return cellWidth + GRID_GAP_PX;
-  }, [columns, parentRef]);
+  const cellWidth = getCellWidth(containerWidth, columns);
+  const rowHeight = getRowHeight(containerWidth, columns);
+  const rowCount = getRowCount(items.length, columns);
+  const overscan = getOverscanRowCount(viewportHeight, rowHeight);
+
+  useEffect(() => {
+    const element = parentRef.current;
+    if (!element) return;
+
+    const update = () => {
+      setContainerWidth(element.clientWidth);
+      setViewportHeight(element.clientHeight);
+    };
+    update();
+
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [parentRef]);
+
+  const getScrollElement = useCallback(() => parentRef.current, [parentRef]);
+
+  const getItemKey = useCallback(
+    (rowIndex: number) => {
+      const first = items[rowIndex * columns];
+      return first?.id ?? `row-${rowIndex}`;
+    },
+    [items, columns],
+  );
 
   const virtualizer = useVirtualizer({
     count: rowCount,
-    getScrollElement: () => parentRef.current,
-    estimateSize: estimateRowHeight,
-    overscan: 3,
+    getScrollElement,
+    estimateSize: () => rowHeight,
+    overscan,
+    getItemKey,
   });
 
-  // Re-measure rows when column density changes (zoom level).
+  // Apply fixed row stride when tile size changes (no DOM measurement).
   useEffect(() => {
-    virtualizer.measure();
-  }, [columns, virtualizer]);
+    if (rowHeight <= 0 || rowCount <= 0) return;
+    for (let i = 0; i < rowCount; i++) {
+      virtualizer.resizeItem(i, rowHeight);
+    }
+    // rowCount intentionally omitted — new rows pick up estimateSize(); only re-sync on stride change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rowCount read for current virtual range only
+  }, [rowHeight, virtualizer]);
+
+  const getCenterIndex = useCallback(() => {
+    const scrollEl = parentRef.current;
+    if (!scrollEl) return 0;
+    return getCenterItemIndex(scrollEl.scrollTop, scrollEl.clientHeight, rowHeight, columns, items.length);
+  }, [parentRef, rowHeight, columns, items.length]);
+
+  // Preserve focal item when zoom or resize changes column count / row height.
+  useLayoutEffect(() => {
+    const scrollEl = parentRef.current;
+    if (!scrollEl || rowCount === 0) return;
+
+    const prev = layoutSnapshot.current;
+    const next: LayoutSnapshot = { columns, rowHeight, containerWidth };
+
+    if (prev && (prev.columns !== columns || prev.rowHeight !== rowHeight)) {
+      const centerIndex = getCenterItemIndex(
+        scrollEl.scrollTop,
+        scrollEl.clientHeight,
+        prev.rowHeight,
+        prev.columns,
+        items.length,
+      );
+      const rowIndex = Math.floor(centerIndex / columns);
+      virtualizer.scrollToIndex(rowIndex, { align: "center", behavior: "auto" });
+    }
+
+    layoutSnapshot.current = next;
+  }, [columns, rowHeight, containerWidth, rowCount, items.length, virtualizer, parentRef]);
 
   useImperativeHandle(
     ref,
     () => ({
-      scrollToItemIndex(index: number) {
+      scrollToItemIndex(index, options) {
         const rowIndex = Math.floor(index / columns);
-        virtualizer.scrollToIndex(rowIndex, { align: "start", behavior: "smooth" });
+        virtualizer.scrollToIndex(rowIndex, {
+          align: options?.align ?? "start",
+          behavior: options?.behavior ?? "smooth",
+        });
       },
       getFirstVisibleItemIndex() {
         const firstRow = virtualizer.getVirtualItems()[0];
         if (!firstRow) return 0;
         return firstRow.index * columns;
       },
+      getCenterItemIndex: getCenterIndex,
+      preserveScrollAfterTrim(removedFromStart) {
+        const scrollEl = parentRef.current;
+        if (!scrollEl || removedFromStart <= 0) return;
+        const delta = getScrollOffsetForTrim(removedFromStart, columns, rowHeight);
+        scrollEl.scrollTop = Math.max(0, scrollEl.scrollTop - delta);
+      },
       getVirtualizer() {
         return virtualizer;
       },
     }),
-    [virtualizer, columns],
+    [virtualizer, columns, rowHeight, getCenterIndex, parentRef],
   );
 
-  const gridTemplateColumns = useMemo(() => `repeat(${columns}, minmax(0, 1fr))`, [columns]);
+  const gridTemplateColumns = useMemo(() => `repeat(${columns}, ${cellWidth}px)`, [columns, cellWidth]);
 
   return (
     <>
@@ -82,30 +178,38 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
       >
         {virtualizer.getVirtualItems().map((virtualRow) => {
           const startIndex = virtualRow.index * columns;
-          const rowItems = items.slice(startIndex, startIndex + columns);
 
           return (
             <div
               key={virtualRow.key}
               data-index={virtualRow.index}
-              ref={virtualizer.measureElement}
               className="absolute left-0 top-0 w-full"
               style={{
+                height: rowHeight,
                 transform: `translateY(${virtualRow.start}px)`,
                 display: "grid",
                 gridTemplateColumns,
                 gap: `${GRID_GAP_PX}px`,
-                willChange: "transform",
+                contentVisibility: "auto",
+                containIntrinsicSize: `${rowHeight}px`,
               }}
             >
-              {rowItems.map((item) => (
-                <MediaTile
-                  key={item.id}
-                  item={item}
-                  useMediumThumbnail={useMediumThumbnail}
-                  onSelect={onSelect}
-                />
-              ))}
+              {Array.from({ length: columns }, (_, col) => {
+                const item = items[startIndex + col];
+                if (!item) {
+                  return <MediaCellPlaceholder key={`empty-${virtualRow.index}-${col}`} cellSize={cellWidth} />;
+                }
+                return (
+                  <MediaCell
+                    key={item.id}
+                    item={item}
+                    cellSize={cellWidth}
+                    useMediumThumbnail={useMediumThumbnail}
+                    scrollRootRef={parentRef}
+                    onSelect={onSelect}
+                  />
+                );
+              })}
             </div>
           );
         })}

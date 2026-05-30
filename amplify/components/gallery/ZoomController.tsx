@@ -1,5 +1,6 @@
 "use client";
 
+import { shouldUseMediumThumbnail } from "@/lib/thumbnail-tier";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 /** Column counts per zoom level — level 1 is most zoomed out (smallest tiles). */
@@ -22,6 +23,13 @@ function clampZoomLevel(level: number): ZoomLevel {
   return Math.min(5, Math.max(1, Math.round(level))) as ZoomLevel;
 }
 
+function getResponsiveColumns(baseColumns: number, containerWidth: number): number {
+  if (baseColumns === 2 && containerWidth < 420) {
+    return 1;
+  }
+  return baseColumns;
+}
+
 type ZoomProviderProps = {
   children: ReactNode;
   /** Attach pinch / ctrl+wheel handlers to this element. */
@@ -30,14 +38,17 @@ type ZoomProviderProps = {
 
 /**
  * Manages Apple Photos-style zoom levels.
- * Levels 1-2 load smallUrl thumbnails; levels 3-5 load mediumUrl.
+ * Thumbnail tier follows on-screen tile size × DPR (small until ~300px needed).
  */
 export function ZoomProvider({ children, containerRef }: ZoomProviderProps) {
   const [zoomLevel, setZoomLevelState] = useState<ZoomLevel>(3);
+  const [containerWidth, setContainerWidth] = useState(390);
+  const [devicePixelRatio, setDevicePixelRatio] = useState(1);
   const pinchRef = useRef<{ distance: number; level: ZoomLevel } | null>(null);
 
-  const columns = ZOOM_COLUMN_COUNTS[zoomLevel - 1];
-  const useMediumThumbnail = zoomLevel >= 3;
+  const baseColumns = ZOOM_COLUMN_COUNTS[zoomLevel - 1];
+  const columns = getResponsiveColumns(baseColumns, containerWidth);
+  const useMediumThumbnail = shouldUseMediumThumbnail(containerWidth, columns, devicePixelRatio);
 
   const setZoomLevel = useCallback((level: ZoomLevel) => {
     setZoomLevelState(clampZoomLevel(level));
@@ -49,6 +60,25 @@ export function ZoomProvider({ children, containerRef }: ZoomProviderProps) {
 
   const zoomOut = useCallback(() => {
     setZoomLevelState((current) => clampZoomLevel(current - 1));
+  }, []);
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+
+    const updateWidth = () => setContainerWidth(element.clientWidth);
+    updateWidth();
+
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [containerRef]);
+
+  useEffect(() => {
+    const updateDpr = () => setDevicePixelRatio(window.devicePixelRatio || 1);
+    updateDpr();
+    window.addEventListener("resize", updateDpr, { passive: true });
+    return () => window.removeEventListener("resize", updateDpr);
   }, []);
 
   useEffect(() => {
@@ -134,21 +164,4 @@ export function useZoom(): ZoomContextValue {
     throw new Error("useZoom must be used within ZoomProvider");
   }
   return context;
-}
-
-/** Level 5 uses 1 column on narrow phones, 2 columns otherwise. */
-export function useResponsiveColumns(baseColumns: number): number {
-  const [width, setWidth] = useState(390);
-
-  useEffect(() => {
-    const update = () => setWidth(window.innerWidth);
-    update();
-    window.addEventListener("resize", update, { passive: true });
-    return () => window.removeEventListener("resize", update);
-  }, []);
-
-  if (baseColumns === 2 && width < 420) {
-    return 1;
-  }
-  return baseColumns;
 }

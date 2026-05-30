@@ -101,7 +101,7 @@ export type VideoMetadata = {
   rotation: number | null;
 };
 
-/** Full photo record as written to DynamoDB by lambda/index.js */
+/** DynamoDB photo record (full write shape or slim list projection). */
 export type DynamoPhotoItem = {
   PK: "PHOTOS";
   SK: string;
@@ -114,7 +114,7 @@ export type DynamoPhotoItem = {
   uploadedAt: string;
   modifiedAt: string;
   mimeType: string;
-  image_metadata: ImageMetadata;
+  image_metadata?: Pick<ImageMetadata, "geometry">;
   video_metadata?: VideoMetadata | null;
 };
 

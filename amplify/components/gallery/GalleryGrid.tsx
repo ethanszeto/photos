@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { VirtualizedGrid, type VirtualizedGridHandle } from "@/components/gallery/VirtualizedGrid";
-import { useZoom, useResponsiveColumns, ZoomProvider } from "@/components/gallery/ZoomController";
+import { useZoom, ZoomProvider } from "@/components/gallery/ZoomController";
 import type { MediaItem } from "@/types";
 
 type GalleryGridInnerProps = {
@@ -51,14 +51,13 @@ function LoadMoreSentinel({
 
   return (
     <div ref={sentinelRef} className="flex h-20 items-center justify-center">
-      {loadingMore && <span className="text-xs text-neutral-400">Loading…</span>}
+      {loadingMore && <span className="text-xs text-white/40">Loading…</span>}
     </div>
   );
 }
 
 function GalleryGridInner({ items, scrollContainerRef, gridRef, onSelect, onLoadMore, hasMore, loadingMore }: GalleryGridInnerProps) {
-  const { columns: baseColumns, useMediumThumbnail } = useZoom();
-  const columns = useResponsiveColumns(baseColumns);
+  const { columns, useMediumThumbnail } = useZoom();
 
   return (
     <VirtualizedGrid
@@ -98,8 +97,8 @@ export function GalleryGrid({ items, gridRef, onSelect, onLoadMore, hasMore, loa
       <div
         ref={scrollContainerRef}
         data-gallery-scroll
-        className="h-full min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
-        style={{ contain: "strict", touchAction: "pan-y" }}
+        className="h-full min-h-0 flex-1 overflow-y-auto overscroll-contain pb-28 [-webkit-overflow-scrolling:touch]"
+        style={{ contain: "strict", touchAction: "pan-y", overflowAnchor: "none" }}
       >
         <GalleryGridInner
           items={items}
