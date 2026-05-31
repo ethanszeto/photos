@@ -220,7 +220,7 @@ export function UploadFAB({ onUploaded, latestTakenAt: latestTakenAtHint }: Uplo
     openFilePicker();
   };
 
-  const toastBottomClass = "fixed left-4 right-4 z-40 mx-auto max-w-md bottom-[calc(6rem+env(safe-area-inset-bottom,0px))]";
+  const toastBottomClass = "fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-md";
 
   const batchLabel = batch
     ? batch.phase === "done"
@@ -305,7 +305,7 @@ export function UploadFAB({ onUploaded, latestTakenAt: latestTakenAtHint }: Uplo
         type="button"
         disabled={busy}
         onClick={handleFabClick}
-        className="fixed right-[max(1.5rem,env(safe-area-inset-right,0px))] bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] z-50 flex h-14 w-14 items-center justify-center rounded-full bg-white/15 text-[28px] font-light text-white shadow-lg ring-1 ring-white/10 backdrop-blur-xl transition-transform active:scale-95 disabled:opacity-50"
+        className="fixed bottom-6 right-[max(1.5rem,env(safe-area-inset-right,0px))] z-50 flex h-14 w-14 items-center justify-center rounded-full bg-white/15 text-[28px] font-light text-white shadow-lg ring-1 ring-white/10 backdrop-blur-xl transition-transform active:scale-95 disabled:opacity-50"
         aria-label="Upload photos"
       >
         +

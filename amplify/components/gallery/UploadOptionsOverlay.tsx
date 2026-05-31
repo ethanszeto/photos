@@ -200,7 +200,7 @@ export function UploadOptionsOverlay({ latestTakenAt, loadingLatest, onSelectPho
           <div className="h-1 w-10 rounded-full bg-white/30" />
         </div>
 
-        <div className="px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+        <div className="px-4 pb-5">
           <h2 className="text-center text-lg font-semibold text-white">Add Photos</h2>
 
           <p className="mt-1 text-center text-sm text-white/50">Choose how you want to upload</p>
