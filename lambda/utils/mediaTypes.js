@@ -54,6 +54,7 @@ const EXT_TO_MIME = {
 };
 
 const VIDEO_EXTENSIONS = new Set(["mp4", "mov", "mkv", "m4v"]);
+const HEIF_EXTENSIONS = new Set(["heic", "heif"]);
 
 export function extensionFromKey(key) {
   const match = key.toLowerCase().match(/\.([a-z0-9]+)$/);
@@ -93,4 +94,17 @@ export function videoTempExtension(objectKey) {
   const ext = extensionFromKey(objectKey);
   if (ext && VIDEO_EXTENSIONS.has(ext)) return ext;
   return "mp4";
+}
+
+export function isHeifImage(contentType = "", objectKey = "") {
+  const resolved = resolveContentType(contentType, objectKey);
+  if (resolved === "image/heic" || resolved === "image/heif") return true;
+  const ext = extensionFromKey(objectKey);
+  return ext != null && HEIF_EXTENSIONS.has(ext);
+}
+
+export function heifTempExtension(objectKey) {
+  const ext = extensionFromKey(objectKey);
+  if (ext && HEIF_EXTENSIONS.has(ext)) return ext;
+  return "heic";
 }

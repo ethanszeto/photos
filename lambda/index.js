@@ -78,7 +78,7 @@ export const handler = async (event) => {
 
       let result;
       if (mediaType === "image") {
-        result = await processImage(buffer, id);
+        result = await processImage(buffer, id, originalKey, contentType);
       } else if (mediaType === "video") {
         result = await processVideo(buffer, id, videoTempExtension(originalKey));
       } else if (mediaType === "gif") {
