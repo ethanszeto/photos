@@ -4,11 +4,12 @@ import processGif from "./mediaPipelines/gif.js";
 import processImage from "./mediaPipelines/image.js";
 import processVideo from "./mediaPipelines/video.js";
 import sharp from "sharp";
+import crypto from "crypto";
 import upload from "./utils/s3Upload.js";
 import { randomUUID } from "crypto";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import {
   AWS_REGION,
   THUMBNAIL_BUCKET,
@@ -34,9 +35,28 @@ export const handler = async (event) => {
       const originalBucket = s3Record.s3.bucket.name;
       const originalKey = decodeURIComponent(s3Record.s3.object.key.replace(/\+/g, " "));
 
+      // deterministic ID for dedup and dynamo lookup
+      const id = crypto.createHash("sha256").update(`${originalBucket}:${originalKey}`).digest("hex");
+
       // prevent recursion
       if (originalKey.startsWith("small/") || originalKey.startsWith("medium/") || originalKey.startsWith("video/")) {
         console.log("Skipping derived file:", originalKey);
+        continue;
+      }
+
+      // Short circuit of original key exists
+      const existing = await dynamo.send(
+        new GetCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            PK: "PHOTOS",
+            SK: id,
+          },
+        }),
+      );
+
+      if (existing.Item) {
+        console.log("Already exists", originalKey);
         continue;
       }
 
@@ -57,13 +77,13 @@ export const handler = async (event) => {
       const buffer = Buffer.from(await object.Body.transformToByteArray());
       const contentType = resolveContentType(object.ContentType || "", originalKey);
       const mediaType = getMediaType(contentType, originalKey);
+      const mediaHash = crypto.createHash("sha256").update(buffer).digest("hex");
 
       if (mediaType === "unknown") {
         console.log("Unsupported media type:", contentType);
         continue;
       }
 
-      const id = randomUUID();
       const now = new Date().toISOString();
       const lastModified = object.LastModified?.toISOString() ?? now;
 
@@ -109,8 +129,9 @@ export const handler = async (event) => {
        */
       const item = {
         PK: "PHOTOS",
-        SK: `${takenAt}#${id}`,
+        SK: id, // quick lookup id : deterministic
         id,
+        mediaHash, // dedup hash, based on img buffer
         mediaType,
         smallUrl,
         mediumUrl,
@@ -120,7 +141,7 @@ export const handler = async (event) => {
         modifiedAt,
         mimeType: contentType,
         image_metadata: mediaType === "video" ? {} : exifData.metadata,
-        video_metadata: mediaType === "video" ? (result.video_metadata ?? {}) : undefined,
+        video_metadata: mediaType === "video" ? result.video_metadata ?? {} : undefined,
       };
 
       await dynamo.send(
