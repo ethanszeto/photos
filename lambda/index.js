@@ -83,10 +83,10 @@ export const handler = async (event) => {
       let exifData = { takenAt: null, modifiedAt: null, metadata: {} };
       if (mediaType === "image" || mediaType === "gif") {
         exifData = await extractExifData(buffer);
+      } else if (mediaType === "video") {
+        // Some MOV/HEIC containers embed EXIF — try before ffprobe-only fallback.
+        exifData = await extractExifData(buffer);
       }
-
-      const takenAt = exifData.takenAt || lastModified || now;
-      const modifiedAt = exifData.modifiedAt || lastModified || now;
 
       let result;
       if (mediaType === "image") {
@@ -100,6 +100,9 @@ export const handler = async (event) => {
       if (!result?.small || !result?.medium) {
         throw new Error(`Thumbnail generation failed for ${originalKey} (${mediaType})`);
       }
+
+      const takenAt = exifData.takenAt || result.takenAt || result.video_metadata?.takenAt || lastModified || now;
+      const modifiedAt = exifData.modifiedAt || lastModified || now;
 
       const smallKey = `small/${mediaHash}.webp`;
       const mediumKey = `medium/${mediaHash}.webp`;

@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import { writeFile, readFile } from "fs/promises";
 import { execFileAsync } from "../utils/config.js";
+import { extractVideoTakenAt } from "../utils/extractTakenAt.js";
 
 export default async function processVideo(buffer, photoId, extension = "mp4") {
   const safeExt = extension.replace(/[^a-z0-9]/gi, "") || "mp4";
@@ -15,6 +16,7 @@ export default async function processVideo(buffer, photoId, extension = "mp4") {
   let codec = null;
   let bitRate = null;
   let rotation = null;
+  let takenAt = null;
 
   try {
     const { stdout } = await execFileAsync("ffprobe", [
@@ -23,9 +25,9 @@ export default async function processVideo(buffer, photoId, extension = "mp4") {
       "-select_streams",
       "v:0",
       "-show_entries",
-      "stream=width,height,codec_name,bit_rate:stream_tags=rotate",
+      "stream=width,height,codec_name,bit_rate:stream_tags=creation_time,date,com.apple.quicktime.creationdate,rotate",
       "-show_entries",
-      "format=duration",
+      "format=duration:format_tags=creation_time,date,com.apple.quicktime.creationdate",
       "-of",
       "json",
       inputPath,
@@ -41,6 +43,7 @@ export default async function processVideo(buffer, photoId, extension = "mp4") {
     codec = stream.codec_name ?? null;
     bitRate = stream.bit_rate ? Number(stream.bit_rate) : null;
     duration = format.duration ? parseFloat(format.duration) : null;
+    takenAt = extractVideoTakenAt(data);
 
     rotation = stream.tags?.rotate ? parseInt(stream.tags.rotate, 10) : null;
   } catch (err) {
@@ -71,6 +74,7 @@ export default async function processVideo(buffer, photoId, extension = "mp4") {
   return {
     small,
     medium,
+    takenAt,
     video_metadata: {
       duration,
       width,
@@ -78,6 +82,7 @@ export default async function processVideo(buffer, photoId, extension = "mp4") {
       codec,
       bitRate,
       rotation,
+      takenAt,
     },
   };
 }

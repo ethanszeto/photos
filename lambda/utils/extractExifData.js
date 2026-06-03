@@ -1,15 +1,9 @@
 import exifr from "exifr";
+import { EXIF_PARSE_OPTIONS, extractTakenAt, parseMetadataDate } from "./extractTakenAt.js";
 
 export default async function extractExifData(buffer) {
   try {
-    const exif = await exifr.parse(buffer, {
-      tiff: true,
-      ifd0: true,
-      exif: true,
-      gps: true,
-      xmp: true,
-      icc: true,
-    });
+    const exif = await exifr.parse(buffer, EXIF_PARSE_OPTIONS);
 
     if (!exif) {
       return {
@@ -19,23 +13,23 @@ export default async function extractExifData(buffer) {
       };
     }
 
-    // Best possible "taken at" date
-    const takenDate = exif.DateTimeOriginal || exif.CreateDate || exif.ModifyDate || null;
-
-    const modifiedDate = exif.ModifyDate || null;
+    const { takenAt, modifiedAt, source } = extractTakenAt(exif);
 
     return {
-      takenAt: takenDate ? new Date(takenDate).toISOString() : null,
-
-      modifiedAt: modifiedDate ? new Date(modifiedDate).toISOString() : null,
-
+      takenAt,
+      modifiedAt,
       metadata: {
         time: {
-          takenAt: exif.DateTimeOriginal ? new Date(exif.DateTimeOriginal).toISOString() : null,
-          createdAt: exif.CreateDate ? new Date(exif.CreateDate).toISOString() : null,
-          modifiedAt: exif.ModifyDate ? new Date(exif.ModifyDate).toISOString() : null,
-          offsetTime: exif.OffsetTimeOriginal ?? null,
-          subSecTime: exif.SubSecTimeOriginal ?? null,
+          takenAt: takenAt ?? null,
+          createdAt: parseMetadataDate(exif.CreateDate),
+          modifiedAt: modifiedAt ?? null,
+          digitizedAt: parseMetadataDate(exif.DateTimeDigitized ?? exif.CreateDate),
+          offsetTime: exif.OffsetTimeOriginal ?? exif.OffsetTime ?? null,
+          subSecTime: exif.SubSecTimeOriginal ?? exif.SubSecTime ?? null,
+          source: source ?? null,
+          iptcDateCreated: parseMetadataDate(exif.DateCreated),
+          iptcTimeCreated: exif.TimeCreated ?? null,
+          gpsDateStamp: exif.GPSDateStamp ?? null,
         },
         gps: {
           latitude: exif.latitude ?? null,
