@@ -46,12 +46,6 @@ export function getImagePrefetchRootMargin(viewportHeight: number): string {
   return `${px}px 0px`;
 }
 
-/** Scroll offset removed when trimming N items from the start of a newest-first list. */
-export function getScrollOffsetForTrim(removedFromStart: number, columns: number, rowHeight: number): number {
-  if (removedFromStart <= 0 || columns <= 0 || rowHeight <= 0) return 0;
-  return Math.floor(removedFromStart / columns) * rowHeight;
-}
-
 /** CSS aspect-ratio value from media dimensions (defaults to square). */
 export function getAspectRatioStyle(width?: number, height?: number): string {
   if (width != null && height != null && width > 0 && height > 0) {

@@ -8,7 +8,6 @@ import { MediaViewer } from "@/components/gallery/MediaViewer";
 import { UploadFAB } from "@/components/gallery/UploadFAB";
 import type { VirtualizedGridHandle } from "@/components/gallery/VirtualizedGrid";
 import { noStoreFetchInit } from "@/lib/no-store";
-import { trimLoadedItems } from "@/lib/media-window";
 import type { MediaItem, MediaListResponse } from "@/types";
 
 type GalleryPageProps = {
@@ -32,19 +31,6 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const idToIndexRef = useRef(new Map<string, number>());
 
-  const applyLoadedItems = useCallback((merged: MediaItem[]) => {
-    const anchor = gridRef.current?.getFirstVisibleItemIndex() ?? 0;
-    const { items: trimmed, removedFromStart } = trimLoadedItems(merged, anchor);
-
-    if (removedFromStart > 0) {
-      requestAnimationFrame(() => {
-        gridRef.current?.preserveScrollAfterTrim(removedFromStart);
-      });
-    }
-
-    return trimmed;
-  }, []);
-
   const loadMore = useCallback(async () => {
     if (!cursor || loadingMore) return;
     setLoadingMore(true);
@@ -52,14 +38,14 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
       const response = await fetch(`/api/gallery?cursor=${encodeURIComponent(cursor)}`, noStoreFetchInit);
       if (!response.ok) throw new Error("Failed to load more media");
       const data = (await response.json()) as { items: MediaItem[]; nextCursor: string | null };
-      setItems((current) => applyLoadedItems([...current, ...data.items]));
+      setItems((current) => [...current, ...data.items]);
       setCursor(data.nextCursor);
     } catch (error) {
       console.error("Infinite scroll error:", error);
     } finally {
       setLoadingMore(false);
     }
-  }, [cursor, loadingMore, applyLoadedItems]);
+  }, [cursor, loadingMore]);
 
   const handleSelect = useCallback((item: MediaItem) => {
     const index = idToIndexRef.current.get(item.id);
@@ -81,7 +67,7 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
       const data = (await response.json()) as MediaListResponse;
 
       if (mode === "replace") {
-        setItems(applyLoadedItems(data.items));
+        setItems(data.items);
         setCursor(data.nextCursor);
         setViewerIndex(null);
         requestAnimationFrame(() => {
@@ -89,20 +75,17 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
         });
       } else {
         setItems((current) => {
-          const byId = new Map(current.map((item) => [item.id, item]));
-          for (const item of data.items) {
-            byId.set(item.id, item);
-          }
-          const merged = Array.from(byId.values()).sort(
-            (a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime(),
-          );
-          return applyLoadedItems(merged);
+          const currentIds = new Set(current.map((item) => item.id));
+          const updates = new Map(data.items.map((item) => [item.id, item]));
+          const newFromApi = data.items.filter((item) => !currentIds.has(item.id));
+          const existing = current.map((item) => updates.get(item.id) ?? item);
+          return [...newFromApi, ...existing];
         });
       }
 
       router.refresh();
     },
-    [applyLoadedItems, router],
+    [router],
   );
 
   const handleRefresh = useCallback(async () => {

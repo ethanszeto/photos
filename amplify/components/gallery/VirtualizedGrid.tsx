@@ -21,7 +21,6 @@ import {
   getOverscanRowCount,
   getRowCount,
   getRowHeight,
-  getScrollOffsetForTrim,
 } from "@/lib/grid-layout";
 import type { MediaItem } from "@/types";
 
@@ -29,9 +28,11 @@ export type VirtualizedGridHandle = {
   scrollToItemIndex: (index: number, options?: { align?: "start" | "center"; behavior?: ScrollBehavior }) => void;
   getFirstVisibleItemIndex: () => number;
   getCenterItemIndex: () => number;
-  preserveScrollAfterTrim: (removedFromStart: number) => void;
   getVirtualizer: () => Virtualizer<HTMLDivElement, Element> | null;
 };
+
+/** Height reserved below the virtualized rows for the infinite-scroll sentinel. */
+const LOAD_MORE_SENTINEL_HEIGHT = 80;
 
 type VirtualizedGridProps = {
   items: MediaItem[];
@@ -154,70 +155,69 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
         return firstRow.index * columns;
       },
       getCenterItemIndex: getCenterIndex,
-      preserveScrollAfterTrim(removedFromStart) {
-        const scrollEl = parentRef.current;
-        if (!scrollEl || removedFromStart <= 0) return;
-        const delta = getScrollOffsetForTrim(removedFromStart, columns, rowHeight);
-        scrollEl.scrollTop = Math.max(0, scrollEl.scrollTop - delta);
-      },
       getVirtualizer() {
         return virtualizer;
       },
     }),
-    [virtualizer, columns, rowHeight, getCenterIndex, parentRef],
+    [virtualizer, columns, getCenterIndex],
   );
 
   const gridTemplateColumns = useMemo(() => `repeat(${columns}, ${cellWidth}px)`, [columns, cellWidth]);
+  const totalSize = virtualizer.getTotalSize();
+  const scrollHeight = totalSize + (loadMoreSentinel ? LOAD_MORE_SENTINEL_HEIGHT : 0);
 
   return (
-    <>
-      <div
-        style={{
-          height: `${virtualizer.getTotalSize()}px`,
-          width: "100%",
-          position: "relative",
-        }}
-      >
-        {virtualizer.getVirtualItems().map((virtualRow) => {
-          const startIndex = virtualRow.index * columns;
+    <div
+      style={{
+        height: `${scrollHeight}px`,
+        width: "100%",
+        position: "relative",
+      }}
+    >
+      {virtualizer.getVirtualItems().map((virtualRow) => {
+        const startIndex = virtualRow.index * columns;
 
-          return (
-            <div
-              key={virtualRow.key}
-              data-index={virtualRow.index}
-              className="absolute left-0 top-0 w-full"
-              style={{
-                height: rowHeight,
-                transform: `translateY(${virtualRow.start}px)`,
-                display: "grid",
-                gridTemplateColumns,
-                gap: `${GRID_GAP_PX}px`,
-                contentVisibility: "auto",
-                containIntrinsicSize: `${rowHeight}px`,
-              }}
-            >
-              {Array.from({ length: columns }, (_, col) => {
-                const item = items[startIndex + col];
-                if (!item) {
-                  return <MediaCellPlaceholder key={`empty-${virtualRow.index}-${col}`} cellSize={cellWidth} />;
-                }
-                return (
-                  <MediaCell
-                    key={item.id}
-                    item={item}
-                    cellSize={cellWidth}
-                    useMediumThumbnail={useMediumThumbnail}
-                    scrollRootRef={parentRef}
-                    imagePrefetchMargin={imagePrefetchMargin}
-                    onSelect={onSelect}
-                  />
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
-      {loadMoreSentinel}
-    </>
+        return (
+          <div
+            key={virtualRow.key}
+            data-index={virtualRow.index}
+            className="absolute left-0 top-0 w-full"
+            style={{
+              height: rowHeight,
+              transform: `translateY(${virtualRow.start}px)`,
+              display: "grid",
+              gridTemplateColumns,
+              gap: `${GRID_GAP_PX}px`,
+            }}
+          >
+            {Array.from({ length: columns }, (_, col) => {
+              const item = items[startIndex + col];
+              if (!item) {
+                return <MediaCellPlaceholder key={`empty-${virtualRow.index}-${col}`} cellSize={cellWidth} />;
+              }
+              return (
+                <MediaCell
+                  key={item.id}
+                  item={item}
+                  cellSize={cellWidth}
+                  useMediumThumbnail={useMediumThumbnail}
+                  scrollRootRef={parentRef}
+                  imagePrefetchMargin={imagePrefetchMargin}
+                  onSelect={onSelect}
+                />
+              );
+            })}
+          </div>
+        );
+      })}
+      {loadMoreSentinel ? (
+        <div
+          className="absolute left-0 w-full"
+          style={{ top: totalSize, height: LOAD_MORE_SENTINEL_HEIGHT }}
+        >
+          {loadMoreSentinel}
+        </div>
+      ) : null}
+    </div>
   );
 });
