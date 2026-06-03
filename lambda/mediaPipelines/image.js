@@ -7,7 +7,7 @@ import { heifTempExtension, isHeifImage } from "../utils/mediaTypes.js";
 async function decodeHeifToJpeg(buffer, photoId, extension) {
   const safeExt = extension.replace(/[^a-z0-9]/gi, "") || "heic";
   const inputPath = `/tmp/${photoId}.${safeExt}`;
-  const outputPath = `/tmp/${photoId}-decoded.jpg`;
+  const outputPath = `/tmp/${photoId}-decoded.png`;
 
   await writeFile(inputPath, buffer);
   try {
