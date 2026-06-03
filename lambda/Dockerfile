@@ -6,6 +6,8 @@ RUN dnf install -y \
     tar \
     gzip \
     xz \
+    libheif \
+    libheif-tools \
     && dnf clean all
 
 ADD https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz /tmp/
