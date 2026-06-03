@@ -148,6 +148,7 @@ export const handler = async (event) => {
         new PutCommand({
           TableName: TABLE_NAME,
           Item: item,
+          ConditionExpression: "attribute_not_exists(PK) AND ttribute_not_exists(SK)",
         }),
       );
 
