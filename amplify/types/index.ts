@@ -101,37 +101,57 @@ export type VideoMetadata = {
   rotation: number | null;
 };
 
-/** DynamoDB photo record (full write shape or slim list projection). */
-export type DynamoPhotoItem = {
-  PK: "PHOTOS";
+/** Canonical MEDIA record — single source of truth for metadata and storage refs. */
+export type DynamoMediaItem = {
+  PK: "MEDIA";
   SK: string;
   id: string;
   mediaType: MediaType;
-  smallUrl: string;
-  mediumUrl: string;
-  originalUrl: string;
   takenAt: string;
   uploadedAt: string;
   modifiedAt: string;
+  originalUrl: string;
+  smallUrl: string;
+  mediumUrl: string;
   mimeType: string;
-  image_metadata?: Pick<ImageMetadata, "geometry">;
+  image_metadata?: ImageMetadata;
   video_metadata?: VideoMetadata | null;
 };
 
-/** Client-facing media item for the gallery grid and detail viewer. */
+/** Denormalized GALLERY or YEAR#YYYY record — optimized for grid rendering. */
+export type DynamoGalleryItem = {
+  PK: "GALLERY" | `YEAR#${number}`;
+  SK: string;
+  id: string;
+  mediaType: MediaType;
+  takenAt: string;
+  smallUrl: string;
+  mediumUrl: string;
+  width?: number | null;
+  height?: number | null;
+  duration?: number | null;
+};
+
+/** Client-facing item for the gallery grid (from GALLERY / YEAR partitions). */
 export type MediaItem = {
   id: string;
   mediaType: MediaType;
   takenAt: string;
-  uploadedAt: string;
-  modifiedAt: string;
   smallUrl: string;
   mediumUrl: string;
-  originalUrl: string;
   width?: number;
   height?: number;
   duration?: number;
+};
+
+/** Full media detail from the MEDIA partition (detail viewer). */
+export type MediaDetail = MediaItem & {
+  uploadedAt: string;
+  modifiedAt: string;
+  originalUrl: string;
   mimeType: string;
+  image_metadata?: ImageMetadata;
+  video_metadata?: VideoMetadata | null;
 };
 
 export type MediaListResponse = {

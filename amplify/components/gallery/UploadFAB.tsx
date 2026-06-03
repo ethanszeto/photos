@@ -69,7 +69,7 @@ export function UploadFAB({ onUploaded, latestTakenAt: latestTakenAtHint }: Uplo
   const refreshLatestTakenAt = useCallback(async (): Promise<string | null> => {
     setLoadingLatest(true);
     try {
-      const response = await fetch("/api/media/latest", noStoreFetchInit);
+      const response = await fetch("/api/gallery/latest", noStoreFetchInit);
       if (!response.ok) throw new Error("Failed to load latest photo date");
       const data = (await response.json()) as LatestMediaResponse;
       setLatestTakenAt(data.latestTakenAt);

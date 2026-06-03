@@ -49,7 +49,7 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
     if (!cursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const response = await fetch(`/api/media?cursor=${encodeURIComponent(cursor)}`, noStoreFetchInit);
+      const response = await fetch(`/api/gallery?cursor=${encodeURIComponent(cursor)}`, noStoreFetchInit);
       if (!response.ok) throw new Error("Failed to load more media");
       const data = (await response.json()) as { items: MediaItem[]; nextCursor: string | null };
       setItems((current) => applyLoadedItems([...current, ...data.items]));
@@ -76,7 +76,7 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
 
   const refreshGallery = useCallback(
     async (mode: "replace" | "merge") => {
-      const response = await fetch("/api/media?limit=100", noStoreFetchInit);
+      const response = await fetch("/api/gallery?limit=100", noStoreFetchInit);
       if (!response.ok) throw new Error("Failed to load media");
       const data = (await response.json()) as MediaListResponse;
 

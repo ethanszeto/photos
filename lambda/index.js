@@ -3,13 +3,11 @@ import getMediaType, { resolveContentType, videoTempExtension } from "./utils/me
 import processGif from "./mediaPipelines/gif.js";
 import processImage from "./mediaPipelines/image.js";
 import processVideo from "./mediaPipelines/video.js";
-import sharp from "sharp";
 import crypto from "crypto";
 import upload from "./utils/s3Upload.js";
-import { randomUUID } from "crypto";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import {
   AWS_REGION,
   THUMBNAIL_BUCKET,
@@ -35,22 +33,19 @@ export const handler = async (event) => {
       const originalBucket = s3Record.s3.bucket.name;
       const originalKey = decodeURIComponent(s3Record.s3.object.key.replace(/\+/g, " "));
 
-      // deterministic ID for dedup and dynamo lookup
-      const id = crypto.createHash("sha256").update(`${originalBucket}:${originalKey}`).digest("hex");
+      const mediaHash = crypto.createHash("sha256").update(`${originalBucket}:${originalKey}`).digest("hex");
 
-      // prevent recursion
       if (originalKey.startsWith("small/") || originalKey.startsWith("medium/") || originalKey.startsWith("video/")) {
         console.log("Skipping derived file:", originalKey);
         continue;
       }
 
-      // Short circuit of original key exists
       const existing = await dynamo.send(
         new GetCommand({
           TableName: TABLE_NAME,
           Key: {
-            PK: "PHOTOS",
-            SK: id,
+            PK: "MEDIA",
+            SK: mediaHash,
           },
         }),
       );
@@ -62,7 +57,6 @@ export const handler = async (event) => {
 
       console.log("Processing:", originalKey);
 
-      // download original
       const object = await s3.send(
         new GetObjectCommand({
           Bucket: originalBucket,
@@ -77,7 +71,6 @@ export const handler = async (event) => {
       const buffer = Buffer.from(await object.Body.transformToByteArray());
       const contentType = resolveContentType(object.ContentType || "", originalKey);
       const mediaType = getMediaType(contentType, originalKey);
-      const mediaHash = crypto.createHash("sha256").update(buffer).digest("hex");
 
       if (mediaType === "unknown") {
         console.log("Unsupported media type:", contentType);
@@ -87,7 +80,6 @@ export const handler = async (event) => {
       const now = new Date().toISOString();
       const lastModified = object.LastModified?.toISOString() ?? now;
 
-      // exifr on video/MOV buffers can scan the entire file and hang — images/gifs only.
       let exifData = { takenAt: null, modifiedAt: null, metadata: {} };
       if (mediaType === "image" || mediaType === "gif") {
         exifData = await extractExifData(buffer);
@@ -98,22 +90,19 @@ export const handler = async (event) => {
 
       let result;
       if (mediaType === "image") {
-        result = await processImage(buffer, id, originalKey, contentType);
+        result = await processImage(buffer, mediaHash, originalKey, contentType);
       } else if (mediaType === "video") {
-        result = await processVideo(buffer, id, videoTempExtension(originalKey));
+        result = await processVideo(buffer, mediaHash, videoTempExtension(originalKey));
       } else if (mediaType === "gif") {
-        result = await processGif(buffer, id);
+        result = await processGif(buffer, mediaHash);
       }
 
       if (!result?.small || !result?.medium) {
         throw new Error(`Thumbnail generation failed for ${originalKey} (${mediaType})`);
       }
 
-      /**
-       * Upload both previews to S3
-       */
-      const smallKey = `small/${id}.webp`;
-      const mediumKey = `medium/${id}.webp`;
+      const smallKey = `small/${mediaHash}.webp`;
+      const mediumKey = `medium/${mediaHash}.webp`;
 
       await Promise.all([
         upload(s3, THUMBNAIL_BUCKET, smallKey, result.small, "image/webp"),
@@ -124,35 +113,84 @@ export const handler = async (event) => {
       const mediumUrl = `${CLOUDFRONT_THUMBNAIL_DOMAIN}${mediumKey}`;
       const originalUrl = `${CLOUDFRONT_ORIGINAL_DOMAIN}${originalKey}`;
 
-      /**
-       * Upload unified record to DynamoDB
-       */
-      const item = {
-        PK: "PHOTOS",
-        SK: id, // quick lookup id : deterministic
-        id,
-        mediaHash, // dedup hash, based on img buffer
+      const geometryWidth = exifData.metadata?.geometry?.width ?? result.image_metadata?.width ?? null;
+      const geometryHeight = exifData.metadata?.geometry?.height ?? result.image_metadata?.height ?? null;
+      const videoMeta = mediaType === "video" ? (result.video_metadata ?? {}) : null;
+      const width = videoMeta?.width ?? geometryWidth ?? null;
+      const height = videoMeta?.height ?? geometryHeight ?? null;
+      const duration = videoMeta?.duration ?? null;
+
+      const sortKey = `${takenAt}#${mediaHash}`;
+      const year = new Date(takenAt).getUTCFullYear();
+
+      const galleryFields = {
+        id: mediaHash,
         mediaType,
+        takenAt,
         smallUrl,
         mediumUrl,
-        originalUrl,
+        ...(width != null ? { width } : {}),
+        ...(height != null ? { height } : {}),
+        ...(duration != null ? { duration } : {}),
+      };
+
+      const mediaItem = {
+        PK: "MEDIA",
+        SK: mediaHash,
+        id: mediaHash,
+        mediaType,
         takenAt,
         uploadedAt: now,
         modifiedAt,
+        originalUrl,
+        smallUrl,
+        mediumUrl,
         mimeType: contentType,
         image_metadata: mediaType === "video" ? {} : exifData.metadata,
-        video_metadata: mediaType === "video" ? result.video_metadata ?? {} : undefined,
+        video_metadata: mediaType === "video" ? (result.video_metadata ?? {}) : undefined,
+      };
+
+      const galleryItem = {
+        PK: "GALLERY",
+        SK: sortKey,
+        ...galleryFields,
+      };
+
+      const yearItem = {
+        PK: `YEAR#${year}`,
+        SK: sortKey,
+        ...galleryFields,
       };
 
       await dynamo.send(
-        new PutCommand({
-          TableName: TABLE_NAME,
-          Item: item,
-          ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+        new TransactWriteCommand({
+          TransactItems: [
+            {
+              Put: {
+                TableName: TABLE_NAME,
+                Item: mediaItem,
+                ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+              },
+            },
+            {
+              Put: {
+                TableName: TABLE_NAME,
+                Item: galleryItem,
+                ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+              },
+            },
+            {
+              Put: {
+                TableName: TABLE_NAME,
+                Item: yearItem,
+                ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+              },
+            },
+          ],
         }),
       );
 
-      console.log("Processed:", id);
+      console.log("Processed:", mediaHash);
     }
 
     return { success: true };

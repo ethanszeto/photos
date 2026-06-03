@@ -17,7 +17,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<LatestMedi
     const latestTakenAt = await fetchLatestTakenAt();
     return NextResponse.json({ latestTakenAt } satisfies LatestMediaResponse, { headers: jsonHeaders });
   } catch (error) {
-    console.error("Latest media error:", error);
+    console.error("Latest gallery error:", error);
     return NextResponse.json({ error: "Failed to load latest media date" }, { status: 500, headers: jsonHeaders });
   }
 }
