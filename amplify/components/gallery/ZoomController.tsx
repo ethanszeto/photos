@@ -1,34 +1,26 @@
 "use client";
 
-import { shouldUseMediumThumbnail } from "@/lib/thumbnail-tier";
+import {
+  clampZoomLevel,
+  computeGridLayout,
+  getDefaultZoomLevel,
+  type GridLayoutMetrics,
+  type ZoomLevel,
+} from "@/lib/gallery-grid-layout";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-/** Column counts per zoom level — level 1 is most zoomed out (smallest tiles). */
-export const ZOOM_COLUMN_COUNTS = [12, 8, 5, 3, 2] as const;
-
-export type ZoomLevel = 1 | 2 | 3 | 4 | 5;
+export type { GridLayoutMetrics, ZoomLevel };
+export { GALLERY_ZOOM_LEVELS, getDefaultZoomLevel, ZOOM_LEVEL_COUNT } from "@/lib/gallery-grid-layout";
 
 type ZoomContextValue = {
   zoomLevel: ZoomLevel;
-  columns: number;
-  useMediumThumbnail: boolean;
+  layout: GridLayoutMetrics;
   setZoomLevel: (level: ZoomLevel) => void;
   zoomIn: () => void;
   zoomOut: () => void;
 };
 
 const ZoomContext = createContext<ZoomContextValue | null>(null);
-
-function clampZoomLevel(level: number): ZoomLevel {
-  return Math.min(5, Math.max(1, Math.round(level))) as ZoomLevel;
-}
-
-function getResponsiveColumns(baseColumns: number, containerWidth: number): number {
-  if (baseColumns === 2 && containerWidth < 420) {
-    return 1;
-  }
-  return baseColumns;
-}
 
 type ZoomProviderProps = {
   children: ReactNode;
@@ -38,17 +30,25 @@ type ZoomProviderProps = {
 
 /**
  * Manages Apple Photos-style zoom levels.
- * Thumbnail tier follows on-screen tile size × DPR (small until ~300px needed).
+ * Layout metrics come from gallery-zoom-levels.json via computeGridLayout.
  */
 export function ZoomProvider({ children, containerRef }: ZoomProviderProps) {
-  const [zoomLevel, setZoomLevelState] = useState<ZoomLevel>(3);
+  const [zoomLevel, setZoomLevelState] = useState<ZoomLevel>(getDefaultZoomLevel);
   const [containerWidth, setContainerWidth] = useState(390);
+  const [containerHeight, setContainerHeight] = useState(800);
   const [devicePixelRatio, setDevicePixelRatio] = useState(1);
   const pinchRef = useRef<{ distance: number; level: ZoomLevel } | null>(null);
 
-  const baseColumns = ZOOM_COLUMN_COUNTS[zoomLevel - 1];
-  const columns = getResponsiveColumns(baseColumns, containerWidth);
-  const useMediumThumbnail = shouldUseMediumThumbnail(containerWidth, columns, devicePixelRatio);
+  const layout = useMemo(
+    () =>
+      computeGridLayout({
+        zoomLevel,
+        containerWidth,
+        viewportHeight: containerHeight,
+        devicePixelRatio,
+      }),
+    [zoomLevel, containerWidth, containerHeight, devicePixelRatio],
+  );
 
   const setZoomLevel = useCallback((level: ZoomLevel) => {
     setZoomLevelState(clampZoomLevel(level));
@@ -66,10 +66,13 @@ export function ZoomProvider({ children, containerRef }: ZoomProviderProps) {
     const element = containerRef.current;
     if (!element) return;
 
-    const updateWidth = () => setContainerWidth(element.clientWidth);
-    updateWidth();
+    const updateSize = () => {
+      setContainerWidth(element.clientWidth);
+      setContainerHeight(element.clientHeight);
+    };
+    updateSize();
 
-    const observer = new ResizeObserver(updateWidth);
+    const observer = new ResizeObserver(updateSize);
     observer.observe(element);
     return () => observer.disconnect();
   }, [containerRef]);
@@ -146,13 +149,12 @@ export function ZoomProvider({ children, containerRef }: ZoomProviderProps) {
   const value = useMemo(
     () => ({
       zoomLevel,
-      columns,
-      useMediumThumbnail,
+      layout,
       setZoomLevel,
       zoomIn,
       zoomOut,
     }),
-    [zoomLevel, columns, useMediumThumbnail, setZoomLevel, zoomIn, zoomOut],
+    [zoomLevel, layout, setZoomLevel, zoomIn, zoomOut],
   );
 
   return <ZoomContext.Provider value={value}>{children}</ZoomContext.Provider>;

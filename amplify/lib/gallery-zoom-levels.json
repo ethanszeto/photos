@@ -1,0 +1,72 @@
+{
+  "defaultLevelColumns": 5,
+  "levels": [
+    {
+      "level": 1,
+      "label": "mega-wide",
+      "columns": 32,
+      "gapPx": 0,
+      "overscan": {
+        "max": 96,
+        "min": 10,
+        "viewportMultiplier": 2.5,
+        "minAtLeastRowsInView": true
+      }
+    },
+    {
+      "level": 2,
+      "label": "wide",
+      "columns": 12,
+      "gapPx": 2,
+      "overscan": {
+        "max": 48,
+        "min": 10,
+        "viewportMultiplier": 2.5
+      }
+    },
+    {
+      "level": 3,
+      "label": "medium-wide",
+      "columns": 8,
+      "gapPx": 2,
+      "overscan": {
+        "max": 28,
+        "min": 10,
+        "viewportMultiplier": 2.5
+      }
+    },
+    {
+      "level": 4,
+      "label": "medium",
+      "columns": 5,
+      "gapPx": 2,
+      "overscan": {
+        "max": 28,
+        "min": 10,
+        "viewportMultiplier": 2.5
+      }
+    },
+    {
+      "level": 5,
+      "label": "comfortable",
+      "columns": 3,
+      "gapPx": 2,
+      "overscan": {
+        "max": 28,
+        "min": 10,
+        "viewportMultiplier": 2.5
+      }
+    },
+    {
+      "level": 6,
+      "label": "large",
+      "columns": 2,
+      "gapPx": 2,
+      "overscan": {
+        "max": 28,
+        "min": 10,
+        "viewportMultiplier": 2.5
+      }
+    }
+  ]
+}

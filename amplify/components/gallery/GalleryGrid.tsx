@@ -65,15 +65,14 @@ function GalleryGridInner({
   hasMore,
   loadingMore,
 }: GalleryGridInnerProps) {
-  const { columns, useMediumThumbnail } = useZoom();
+  const { layout } = useZoom();
 
   return (
     <VirtualizedGrid
       ref={gridRef}
       parentRef={scrollContainerRef}
       items={items}
-      columns={columns}
-      useMediumThumbnail={useMediumThumbnail}
+      layout={layout}
       onSelect={onSelect}
       loadMoreSentinel={
         <LoadMoreSentinel

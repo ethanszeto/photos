@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useEffect, useRef, useState, type RefObject } from "react";
-import { getAspectRatioStyle } from "@/lib/grid-layout";
+import { getAspectRatioStyle } from "@/lib/gallery-grid-layout";
 import type { MediaItem } from "@/types";
 
 type MediaCellProps = {

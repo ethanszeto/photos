@@ -7,21 +7,11 @@ import {
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
-  useMemo,
   useRef,
-  useState,
   type RefObject,
 } from "react";
 import { MediaCell, MediaCellPlaceholder } from "@/components/gallery/MediaCell";
-import { GRID_GAP_PX } from "@/lib/media-constants";
-import {
-  getCenterItemIndex,
-  getCellWidth,
-  getImagePrefetchRootMargin,
-  getOverscanRowCount,
-  getRowCount,
-  getRowHeight,
-} from "@/lib/grid-layout";
+import { getCenterItemIndex, getRowCount, type GridLayoutMetrics } from "@/lib/gallery-grid-layout";
 import type { MediaItem } from "@/types";
 
 export type VirtualizedGridHandle = {
@@ -36,8 +26,7 @@ const LOAD_MORE_SENTINEL_HEIGHT = 80;
 
 type VirtualizedGridProps = {
   items: MediaItem[];
-  columns: number;
-  useMediumThumbnail: boolean;
+  layout: GridLayoutMetrics;
   onSelect: (item: MediaItem) => void;
   parentRef: RefObject<HTMLDivElement | null>;
   loadMoreSentinel?: React.ReactNode;
@@ -46,41 +35,22 @@ type VirtualizedGridProps = {
 type LayoutSnapshot = {
   columns: number;
   rowHeight: number;
-  containerWidth: number;
+  gapPx: number;
 };
 
 /**
  * Row virtualizer with fixed row stride (no measureElement).
- * Scroll height is deterministic; unmounted rows are accounted for in totalSize only.
+ * All sizing comes from layout (gallery-zoom-levels.json + computeGridLayout).
  */
 export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGridProps>(function VirtualizedGrid(
-  { items, columns, useMediumThumbnail, onSelect, parentRef, loadMoreSentinel },
+  { items, layout, onSelect, parentRef, loadMoreSentinel },
   ref,
 ) {
-  const [containerWidth, setContainerWidth] = useState(360);
-  const [viewportHeight, setViewportHeight] = useState(800);
   const layoutSnapshot = useRef<LayoutSnapshot | null>(null);
 
-  const cellWidth = getCellWidth(containerWidth, columns);
-  const rowHeight = getRowHeight(containerWidth, columns);
+  const { columns, gapPx, cellWidth, rowHeight, overscan, gridTemplateColumns, useMediumThumbnail, imagePrefetchMargin } =
+    layout;
   const rowCount = getRowCount(items.length, columns);
-  const overscan = getOverscanRowCount(viewportHeight, rowHeight);
-  const imagePrefetchMargin = getImagePrefetchRootMargin(viewportHeight);
-
-  useEffect(() => {
-    const element = parentRef.current;
-    if (!element) return;
-
-    const update = () => {
-      setContainerWidth(element.clientWidth);
-      setViewportHeight(element.clientHeight);
-    };
-    update();
-
-    const observer = new ResizeObserver(update);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [parentRef]);
 
   const getScrollElement = useCallback(() => parentRef.current, [parentRef]);
 
@@ -122,9 +92,9 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
     if (!scrollEl || rowCount === 0) return;
 
     const prev = layoutSnapshot.current;
-    const next: LayoutSnapshot = { columns, rowHeight, containerWidth };
+    const next: LayoutSnapshot = { columns, rowHeight, gapPx };
 
-    if (prev && (prev.columns !== columns || prev.rowHeight !== rowHeight)) {
+    if (prev && (prev.columns !== columns || prev.rowHeight !== rowHeight || prev.gapPx !== gapPx)) {
       const centerIndex = getCenterItemIndex(
         scrollEl.scrollTop,
         scrollEl.clientHeight,
@@ -137,7 +107,7 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
     }
 
     layoutSnapshot.current = next;
-  }, [columns, rowHeight, containerWidth, rowCount, items.length, virtualizer, parentRef]);
+  }, [columns, rowHeight, gapPx, rowCount, items.length, virtualizer, parentRef]);
 
   useImperativeHandle(
     ref,
@@ -162,9 +132,9 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
     [virtualizer, columns, getCenterIndex],
   );
 
-  const gridTemplateColumns = useMemo(() => `repeat(${columns}, ${cellWidth}px)`, [columns, cellWidth]);
   const totalSize = virtualizer.getTotalSize();
   const scrollHeight = totalSize + (loadMoreSentinel ? LOAD_MORE_SENTINEL_HEIGHT : 0);
+  const rowGapStyle = gapPx > 0 ? `${gapPx}px` : "0";
 
   return (
     <div
@@ -187,7 +157,7 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
               transform: `translateY(${virtualRow.start}px)`,
               display: "grid",
               gridTemplateColumns,
-              gap: `${GRID_GAP_PX}px`,
+              gap: rowGapStyle,
             }}
           >
             {Array.from({ length: columns }, (_, col) => {
