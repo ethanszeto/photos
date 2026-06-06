@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import { writeFile, readFile } from "fs/promises";
 import { execFileAsync } from "../utils/config.js";
+import { renderThumbnails } from "../utils/thumbnails.js";
 import { extractVideoTakenAt } from "../utils/extractTakenAt.js";
 
 export default async function processVideo(buffer, photoId, extension = "mp4") {
@@ -67,13 +68,10 @@ export default async function processVideo(buffer, photoId, extension = "mp4") {
   ]);
 
   const frameBuffer = await readFile(framePath);
-
-  const small = await sharp(frameBuffer).resize(300, 300, { fit: "inside" }).webp({ quality: 80 }).toBuffer();
-  const medium = await sharp(frameBuffer).resize(1600, null, { withoutEnlargement: true }).webp({ quality: 85 }).toBuffer();
+  const thumbnails = await renderThumbnails(sharp(frameBuffer));
 
   return {
-    small,
-    medium,
+    ...thumbnails,
     takenAt,
     video_metadata: {
       duration,

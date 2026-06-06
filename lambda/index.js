@@ -16,6 +16,13 @@ import {
   CLOUDFRONT_THUMBNAIL_DOMAIN,
   CLOUDFRONT_ORIGINAL_DOMAIN,
 } from "./utils/config.js";
+import {
+  buildThumbnailUrls,
+  isDerivedThumbnailKey,
+  THUMBNAIL_TIERS,
+  thumbnailS3Key,
+  thumbnailsComplete,
+} from "./utils/thumbnails.js";
 
 const s3 = new S3Client({ region: AWS_REGION });
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGION }));
@@ -37,7 +44,7 @@ export const handler = async (event) => {
 
         const mediaHash = crypto.createHash("sha256").update(`${originalBucket}:${originalKey}`).digest("hex");
 
-        if (originalKey.startsWith("small/") || originalKey.startsWith("medium/") || originalKey.startsWith("video/")) {
+        if (isDerivedThumbnailKey(originalKey) || originalKey.startsWith("video/")) {
           console.log("Skipping derived file:", originalKey);
           continue;
         }
@@ -96,26 +103,23 @@ export const handler = async (event) => {
         } else if (mediaType === "video") {
           result = await processVideo(buffer, mediaHash, videoTempExtension(originalKey));
         } else if (mediaType === "gif") {
-          result = await processGif(buffer, mediaHash);
+          result = await processGif(buffer);
         }
 
-        if (!result?.small || !result?.medium) {
+        if (!thumbnailsComplete(result)) {
           throw new Error(`Thumbnail generation failed for ${originalKey} (${mediaType})`);
         }
 
         const takenAt = exifData.takenAt || result.takenAt || result.video_metadata?.takenAt || lastModified || now;
         const modifiedAt = exifData.modifiedAt || lastModified || now;
 
-        const smallKey = `small/${mediaHash}.webp`;
-        const mediumKey = `medium/${mediaHash}.webp`;
+        await Promise.all(
+          THUMBNAIL_TIERS.map((tier) =>
+            upload(s3, THUMBNAIL_BUCKET, thumbnailS3Key(tier, mediaHash), result[tier.name], "image/webp"),
+          ),
+        );
 
-        await Promise.all([
-          upload(s3, THUMBNAIL_BUCKET, smallKey, result.small, "image/webp"),
-          upload(s3, THUMBNAIL_BUCKET, mediumKey, result.medium, "image/webp"),
-        ]);
-
-        const smallUrl = `${CLOUDFRONT_THUMBNAIL_DOMAIN}${smallKey}`;
-        const mediumUrl = `${CLOUDFRONT_THUMBNAIL_DOMAIN}${mediumKey}`;
+        const thumbnailUrls = buildThumbnailUrls(CLOUDFRONT_THUMBNAIL_DOMAIN, mediaHash);
         const originalUrl = `${CLOUDFRONT_ORIGINAL_DOMAIN}${originalKey}`;
 
         const geometryWidth = exifData.metadata?.geometry?.width ?? result.image_metadata?.width ?? null;
@@ -132,8 +136,7 @@ export const handler = async (event) => {
           id: mediaHash,
           mediaType,
           takenAt,
-          smallUrl,
-          mediumUrl,
+          ...thumbnailUrls,
           ...(width != null ? { width } : {}),
           ...(height != null ? { height } : {}),
           ...(duration != null ? { duration } : {}),
@@ -148,8 +151,7 @@ export const handler = async (event) => {
           uploadedAt: now,
           modifiedAt,
           originalUrl,
-          smallUrl,
-          mediumUrl,
+          ...thumbnailUrls,
           mimeType: contentType,
           image_metadata: mediaType === "video" ? {} : exifData.metadata,
           video_metadata: mediaType === "video" ? (result.video_metadata ?? {}) : undefined,
