@@ -24,6 +24,8 @@ export type GridLayoutMetrics = {
   gridTemplateColumns: string;
   useMediumThumbnail: boolean;
   imagePrefetchMargin: string;
+  /** Tap zooms in (no viewer); see gallery-zoom-levels.json liteCell. */
+  liteCell: boolean;
 };
 
 export function getZoomLevelSpec(level: number): ZoomLevelSpec {
@@ -88,6 +90,36 @@ export function getImagePrefetchRootMargin(viewportHeight: number): string {
   return `${px}px 0px`;
 }
 
+type GridPointLayout = {
+  columns: number;
+  cellWidth: number;
+  rowHeight: number;
+  gapPx: number;
+};
+
+/** Map a viewport client point to the nearest grid item index. */
+export function clientPointToItemIndex(
+  clientX: number,
+  clientY: number,
+  scrollElement: HTMLElement,
+  layout: GridPointLayout,
+  itemCount: number,
+): number {
+  if (itemCount <= 0 || layout.rowHeight <= 0 || layout.columns <= 0) return 0;
+
+  const rect = scrollElement.getBoundingClientRect();
+  const contentX = clientX - rect.left;
+  const contentY = clientY - rect.top + scrollElement.scrollTop;
+  const rowIndex = Math.max(0, Math.floor(contentY / layout.rowHeight));
+  const columnStride = layout.cellWidth + layout.gapPx;
+  const colIndex = Math.min(
+    layout.columns - 1,
+    Math.max(0, Math.floor(contentX / columnStride)),
+  );
+  const index = rowIndex * layout.columns + colIndex;
+  return Math.min(index, itemCount - 1);
+}
+
 /** Item index closest to the vertical center of the viewport. */
 export function getCenterItemIndex(
   scrollTop: number,
@@ -146,5 +178,6 @@ export function computeGridLayout({
     gridTemplateColumns: `repeat(${columns}, ${cellWidth}px)`,
     useMediumThumbnail: shouldUseMediumThumbnail(cellWidth, devicePixelRatio),
     imagePrefetchMargin: getImagePrefetchRootMargin(viewportHeight),
+    liteCell: spec.liteCell === true,
   };
 }

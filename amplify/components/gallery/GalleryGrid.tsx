@@ -65,7 +65,7 @@ function GalleryGridInner({
   hasMore,
   loadingMore,
 }: GalleryGridInnerProps) {
-  const { layout } = useZoom();
+  const { layout, awarenessFocalItemIndex, clearAwarenessFocal, zoomInAt } = useZoom();
 
   return (
     <VirtualizedGrid
@@ -73,7 +73,10 @@ function GalleryGridInner({
       parentRef={scrollContainerRef}
       items={items}
       layout={layout}
+      awarenessFocalItemIndex={awarenessFocalItemIndex}
+      onAwarenessFocalApplied={clearAwarenessFocal}
       onSelect={onSelect}
+      onLiteZoom={zoomInAt}
       loadMoreSentinel={
         <LoadMoreSentinel
           scrollRootRef={scrollContainerRef}
@@ -100,7 +103,7 @@ export function GalleryGrid({ items, gridRef, onSelect, onLoadMore, hasMore, loa
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   return (
-    <ZoomProvider containerRef={scrollContainerRef}>
+    <ZoomProvider containerRef={scrollContainerRef} itemCount={items.length}>
       <div
         ref={scrollContainerRef}
         data-gallery-scroll

@@ -6,12 +6,15 @@ import type { MediaItem } from "@/types";
 
 type MediaCellProps = {
   item: MediaItem;
+  itemIndex: number;
   cellSize: number;
   useMediumThumbnail: boolean;
   scrollRootRef: RefObject<HTMLElement | null>;
   /** IntersectionObserver prefetch band — from getImagePrefetchRootMargin(viewportHeight). */
   imagePrefetchMargin: string;
+  liteCell: boolean;
   onSelect: (item: MediaItem) => void;
+  onLiteZoom: (itemIndex: number) => void;
 };
 
 function formatDuration(seconds: number): string {
@@ -21,18 +24,53 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining.toString().padStart(2, "0")}`;
 }
 
+function CellImage({
+  shouldLoadImage,
+  thumbnailUrl,
+  width,
+  height,
+}: {
+  shouldLoadImage: boolean;
+  thumbnailUrl: string;
+  width?: number;
+  height?: number;
+}) {
+  return (
+    <div
+      className="flex h-full w-full items-center justify-center"
+      style={{ aspectRatio: getAspectRatioStyle(width, height) }}
+    >
+      {shouldLoadImage && thumbnailUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={thumbnailUrl}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+          className="h-full w-full object-cover"
+        />
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * Fixed-size grid cell: placeholder shell always mounted; image only near viewport.
+ * Lite cells zoom in on tap instead of opening the viewer.
  */
 export const MediaCell = memo(function MediaCell({
   item,
+  itemIndex,
   cellSize,
   useMediumThumbnail,
   scrollRootRef,
   imagePrefetchMargin,
+  liteCell,
   onSelect,
+  onLiteZoom,
 }: MediaCellProps) {
-  const shellRef = useRef<HTMLButtonElement>(null);
+  const shellRef = useRef<HTMLElement>(null);
   const [shouldLoadImage, setShouldLoadImage] = useState(false);
   const thumbnailUrl = useMediumThumbnail ? item.mediumUrl : item.smallUrl;
 
@@ -54,31 +92,40 @@ export const MediaCell = memo(function MediaCell({
     return () => observer.disconnect();
   }, [scrollRootRef, imagePrefetchMargin]);
 
+  const shellStyle = { width: cellSize, height: cellSize };
+  const image = (
+    <CellImage
+      shouldLoadImage={shouldLoadImage}
+      thumbnailUrl={thumbnailUrl}
+      width={item.width}
+      height={item.height}
+    />
+  );
+
+  if (liteCell) {
+    return (
+      <div
+        ref={shellRef as RefObject<HTMLDivElement>}
+        role="presentation"
+        onClick={() => onLiteZoom(itemIndex)}
+        className="relative shrink-0 cursor-default overflow-hidden bg-zinc-900 active:opacity-90"
+        style={shellStyle}
+      >
+        {image}
+      </div>
+    );
+  }
+
   return (
     <button
-      ref={shellRef}
+      ref={shellRef as RefObject<HTMLButtonElement>}
       type="button"
       onClick={() => onSelect(item)}
       className="relative shrink-0 overflow-hidden bg-zinc-900 active:opacity-90"
-      style={{ width: cellSize, height: cellSize }}
+      style={shellStyle}
       aria-label={`Open ${item.mediaType} taken ${item.takenAt}`}
     >
-      <div
-        className="flex h-full w-full items-center justify-center"
-        style={{ aspectRatio: getAspectRatioStyle(item.width, item.height) }}
-      >
-        {shouldLoadImage && thumbnailUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={thumbnailUrl}
-            alt=""
-            loading="eager"
-            decoding="async"
-            draggable={false}
-            className="h-full w-full object-cover"
-          />
-        ) : null}
-      </div>
+      {image}
 
       {item.mediaType === "video" && item.duration != null && (
         <span className="absolute bottom-1 right-1 rounded px-1 py-0.5 text-[10px] font-medium leading-none text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">

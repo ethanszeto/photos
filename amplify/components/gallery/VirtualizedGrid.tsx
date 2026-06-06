@@ -27,7 +27,10 @@ const LOAD_MORE_SENTINEL_HEIGHT = 80;
 type VirtualizedGridProps = {
   items: MediaItem[];
   layout: GridLayoutMetrics;
+  awarenessFocalItemIndex: number | null;
+  onAwarenessFocalApplied: () => void;
   onSelect: (item: MediaItem) => void;
+  onLiteZoom: (itemIndex: number) => void;
   parentRef: RefObject<HTMLDivElement | null>;
   loadMoreSentinel?: React.ReactNode;
 };
@@ -43,13 +46,22 @@ type LayoutSnapshot = {
  * All sizing comes from layout (gallery-zoom-levels.json + computeGridLayout).
  */
 export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGridProps>(function VirtualizedGrid(
-  { items, layout, onSelect, parentRef, loadMoreSentinel },
+  { items, layout, awarenessFocalItemIndex, onAwarenessFocalApplied, onSelect, onLiteZoom, parentRef, loadMoreSentinel },
   ref,
 ) {
   const layoutSnapshot = useRef<LayoutSnapshot | null>(null);
 
-  const { columns, gapPx, cellWidth, rowHeight, overscan, gridTemplateColumns, useMediumThumbnail, imagePrefetchMargin } =
-    layout;
+  const {
+    columns,
+    gapPx,
+    cellWidth,
+    rowHeight,
+    overscan,
+    gridTemplateColumns,
+    useMediumThumbnail,
+    imagePrefetchMargin,
+    liteCell,
+  } = layout;
   const rowCount = getRowCount(items.length, columns);
 
   const getScrollElement = useCallback(() => parentRef.current, [parentRef]);
@@ -95,19 +107,28 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
     const next: LayoutSnapshot = { columns, rowHeight, gapPx };
 
     if (prev && (prev.columns !== columns || prev.rowHeight !== rowHeight || prev.gapPx !== gapPx)) {
-      const centerIndex = getCenterItemIndex(
-        scrollEl.scrollTop,
-        scrollEl.clientHeight,
-        prev.rowHeight,
-        prev.columns,
-        items.length,
-      );
-      const rowIndex = Math.floor(centerIndex / columns);
+      const focalIndex =
+        awarenessFocalItemIndex ??
+        getCenterItemIndex(scrollEl.scrollTop, scrollEl.clientHeight, prev.rowHeight, prev.columns, items.length);
+      const rowIndex = Math.floor(focalIndex / columns);
       virtualizer.scrollToIndex(rowIndex, { align: "center", behavior: "auto" });
+      if (awarenessFocalItemIndex != null) {
+        onAwarenessFocalApplied();
+      }
     }
 
     layoutSnapshot.current = next;
-  }, [columns, rowHeight, gapPx, rowCount, items.length, virtualizer, parentRef]);
+  }, [
+    columns,
+    rowHeight,
+    gapPx,
+    rowCount,
+    items.length,
+    virtualizer,
+    parentRef,
+    awarenessFocalItemIndex,
+    onAwarenessFocalApplied,
+  ]);
 
   useImperativeHandle(
     ref,
@@ -165,15 +186,19 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
               if (!item) {
                 return <MediaCellPlaceholder key={`empty-${virtualRow.index}-${col}`} cellSize={cellWidth} />;
               }
+              const itemIndex = startIndex + col;
               return (
                 <MediaCell
                   key={item.id}
                   item={item}
+                  itemIndex={itemIndex}
                   cellSize={cellWidth}
                   useMediumThumbnail={useMediumThumbnail}
                   scrollRootRef={parentRef}
                   imagePrefetchMargin={imagePrefetchMargin}
+                  liteCell={liteCell}
                   onSelect={onSelect}
+                  onLiteZoom={onLiteZoom}
                 />
               );
             })}
