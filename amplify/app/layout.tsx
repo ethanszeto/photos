@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
-import { DocumentScrollLock } from "@/components/pwa/DocumentScrollLock";
-import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
+import { DocumentScrollLock } from "@/shared/components/DocumentScrollLock";
+import { ServiceWorkerRegister } from "@/shared/components/ServiceWorkerRegister";
 import "./globals.css";
 
 const geistSans = Geist({

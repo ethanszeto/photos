@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchAlbumList } from "@/lib/album-server";
-import { NO_STORE_CACHE_CONTROL } from "@/lib/no-store";
+import { NO_STORE_CACHE_CONTROL } from "@/shared/lib/no-store";
 import { isAuthenticatedRequest } from "@/lib/session";
 import type { AlbumListResponse } from "@/types";
 

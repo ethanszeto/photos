@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { getThumbnailUrl, type ThumbnailTier } from "@/lib/gallery-grid-layout";
+import { getThumbnailUrl, type ThumbnailTier } from "@/features/gallery/lib/grid-layout";
 import type { MediaItem } from "@/types";
 
 type GridCellImageProps = {
@@ -21,6 +21,7 @@ export const GridCellImage = memo(function GridCellImage({ item, thumbnailTier, 
       src={thumbnailUrl}
       alt=""
       decoding="async"
+      loading={isVisible ? "eager" : "lazy"}
       draggable={false}
       fetchPriority={isVisible ? "high" : "low"}
       className="h-full w-full object-cover"

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { MediaGridPage } from "@/components/gallery/MediaGridPage";
+import { MediaGridPage } from "@/features/gallery/components/MediaGridPage";
 import type { Album, MediaItem } from "@/types";
 
 type AlbumDetailPageProps = {

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { PasscodeLock } from "@/components/passcode/PasscodeLock";
+import { PasscodeLock } from "@/features/auth/components/PasscodeLock";
 import { isAuthenticatedServer } from "@/lib/session";
 
 type HomePageProps = {

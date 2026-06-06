@@ -1,14 +1,15 @@
 "use client";
 
 import { useRef } from "react";
-import { LoadMoreSentinel } from "@/components/gallery/LoadMoreSentinel";
-import { VirtualizedGrid, type VirtualizedGridHandle } from "@/components/gallery/VirtualizedGrid";
-import { useZoom, ZoomProvider } from "@/components/gallery/ZoomController";
+import { GalleryVirtualizer, type GalleryVirtualizerHandle } from "@/features/gallery/components/GalleryVirtualizer";
+import { LoadMoreSentinel } from "@/features/gallery/components/LoadMoreSentinel";
+import { ZoomProvider } from "@/features/gallery/components/ZoomProvider";
+import { useZoom } from "@/features/gallery/hooks/useZoom";
 import type { MediaItem } from "@/types";
 
 type GalleryGridProps = {
   items: MediaItem[];
-  gridRef: React.RefObject<VirtualizedGridHandle | null>;
+  gridRef: React.RefObject<GalleryVirtualizerHandle | null>;
   onSelect: (item: MediaItem) => void;
   onLoadMore: () => void;
   hasMore: boolean;
@@ -42,7 +43,7 @@ export function GalleryGrid({ items, gridRef, onSelect, onLoadMore, hasMore }: G
 type GalleryGridContentProps = {
   items: MediaItem[];
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
-  gridRef: React.RefObject<VirtualizedGridHandle | null>;
+  gridRef: React.RefObject<GalleryVirtualizerHandle | null>;
   onSelect: (item: MediaItem) => void;
   onLoadMore: () => void;
   hasMore: boolean;
@@ -59,7 +60,7 @@ function GalleryGridContent({
   const { layout, awarenessFocalItemIndex, clearAwarenessFocal, zoomInAt } = useZoom();
 
   return (
-    <VirtualizedGrid
+    <GalleryVirtualizer
       ref={gridRef}
       parentRef={scrollContainerRef}
       items={items}

@@ -2,7 +2,7 @@
 
 import { Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { AlbumCard } from "@/components/albums/AlbumCard";
+import { AlbumCard } from "@/features/albums/components/AlbumCard";
 import type { Album } from "@/types";
 
 type AlbumsPageProps = {

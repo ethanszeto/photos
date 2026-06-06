@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { AlbumDetailPage } from "@/components/albums/AlbumDetailPage";
+import { AlbumDetailPage } from "@/features/albums/components/AlbumDetailPage";
 import { fetchAlbumById, fetchAlbumMediaPage } from "@/lib/album-server";
 
 export const dynamic = "force-dynamic";

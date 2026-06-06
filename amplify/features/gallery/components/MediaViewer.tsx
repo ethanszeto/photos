@@ -2,7 +2,7 @@
 
 import { ChevronLeft } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { noStoreFetchInit } from "@/lib/no-store";
+import { noStoreFetchInit } from "@/shared/lib/no-store";
 import type { MediaDetail, MediaItem } from "@/types";
 
 type MediaViewerProps = {
@@ -29,7 +29,6 @@ function formatTakenAtBadge(takenAt: string, duration?: number, isVideo?: boolea
   return label;
 }
 
-/** Preload neighboring originals so swipe/keyboard navigation feels instant. */
 function useNeighborPreload(details: Map<string, MediaDetail>, items: MediaItem[], index: number) {
   useEffect(() => {
     const neighbors = [items[index - 1], items[index + 1]].filter(Boolean) as MediaItem[];
@@ -55,10 +54,7 @@ function useNeighborPreload(details: Map<string, MediaDetail>, items: MediaItem[
   }, [details, items, index]);
 }
 
-/**
- * Fullscreen detail viewer with keyboard + swipe navigation.
- * Fetches canonical MEDIA records for original URLs and full metadata.
- */
+/** Fullscreen viewer — independent from grid; only cares about current/neighbor items. */
 export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) {
   const [index, setIndex] = useState(initialIndex);
   const [details, setDetails] = useState<Map<string, MediaDetail>>(new Map());
@@ -70,9 +66,7 @@ export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) 
   useNeighborPreload(details, items, index);
 
   useEffect(() => {
-    if (!item) return;
-
-    if (details.has(item.id)) return;
+    if (!item || details.has(item.id)) return;
 
     let cancelled = false;
     setLoadingId(item.id);
@@ -109,13 +103,9 @@ export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) 
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      } else if (event.key === "ArrowRight") {
-        goNext();
-      } else if (event.key === "ArrowLeft") {
-        goPrev();
-      }
+      if (event.key === "Escape") onClose();
+      else if (event.key === "ArrowRight") goNext();
+      else if (event.key === "ArrowLeft") goPrev();
     };
 
     window.addEventListener("keydown", onKeyDown);

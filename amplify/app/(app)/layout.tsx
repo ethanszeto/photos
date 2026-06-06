@@ -1,5 +1,5 @@
-import { BottomNav } from "@/components/navigation/BottomNav";
-import { UploadProvider } from "@/components/upload/UploadProvider";
+import { BottomNav } from "@/features/navigation/components/BottomNav";
+import { UploadProvider } from "@/features/upload/components/UploadProvider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (

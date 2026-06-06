@@ -2,8 +2,8 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { NumberPad } from "@/components/passcode/NumberPad";
-import { PasscodeDots } from "@/components/passcode/PasscodeDots";
+import { NumberPad } from "@/features/auth/components/NumberPad";
+import { PasscodeDots } from "@/features/auth/components/PasscodeDots";
 
 const PASSCODE_LENGTH = 6;
 

@@ -1,4 +1,4 @@
-import { AlbumsPage } from "@/components/albums/AlbumsPage";
+import { AlbumsPage } from "@/features/albums/components/AlbumsPage";
 import { fetchAlbumList } from "@/lib/album-server";
 
 export const dynamic = "force-dynamic";

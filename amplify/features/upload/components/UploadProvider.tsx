@@ -1,11 +1,11 @@
 "use client";
 
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
-import { UploadOptionsOverlay } from "@/components/gallery/UploadOptionsOverlay";
-import { noStoreFetchInit } from "@/lib/no-store";
+import { UploadOptionsOverlay } from "@/features/upload/components/UploadOptionsOverlay";
+import { filterFilesNewerThan, filterSelectableFiles } from "@/features/upload/lib/upload-files";
+import { uploadFileToS3 } from "@/features/upload/lib/upload-client";
 import { UPLOAD_ACCEPT } from "@/lib/media-types";
-import { filterFilesNewerThan, filterSelectableFiles } from "@/lib/upload-files";
-import { uploadFileToS3 } from "@/lib/upload-client";
+import { noStoreFetchInit } from "@/shared/lib/no-store";
 import type { LatestMediaResponse, UploadResult } from "@/types";
 
 type UploadItem = {

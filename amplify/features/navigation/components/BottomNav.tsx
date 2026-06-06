@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Folder, LayoutGrid, Plus } from "lucide-react";
-import { useUpload } from "@/components/upload/UploadProvider";
+import { useUpload } from "@/features/upload/components/UploadProvider";
 
 type NavTab = {
   id: "photos" | "albums" | "upload";

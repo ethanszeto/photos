@@ -1,4 +1,4 @@
-import { MediaGridPage } from "@/components/gallery/MediaGridPage";
+import { MediaGridPage } from "@/features/gallery/components/MediaGridPage";
 import { fetchGalleryPage } from "@/lib/media-server";
 
 export const dynamic = "force-dynamic";

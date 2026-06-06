@@ -1,8 +1,8 @@
 "use client";
 
 import { memo } from "react";
-import { GridCellImage } from "@/components/gallery/GridCellImage";
-import { getAspectRatioStyle, type ThumbnailTier } from "@/lib/gallery-grid-layout";
+import { GridCellImage } from "@/features/gallery/components/GridCellImage";
+import { getAspectRatioStyle, type ThumbnailTier } from "@/features/gallery/lib/grid-layout";
 import type { MediaItem } from "@/types";
 
 type MediaCellProps = {
@@ -23,9 +23,7 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining.toString().padStart(2, "0")}`;
 }
 
-/**
- * Fixed-size grid cell. Only mounted rows exist (virtualizer); thumbnails load on mount.
- */
+/** Fixed-size grid cell. Virtualizer is the only mount gate. */
 export const MediaCell = memo(function MediaCell({
   item,
   itemIndex,
@@ -81,7 +79,6 @@ export const MediaCell = memo(function MediaCell({
   );
 });
 
-/** Empty slot preserving row geometry in the last partial row. */
 export function MediaCellPlaceholder({ cellSize }: { cellSize: number }) {
   return <div className="shrink-0 bg-zinc-900" style={{ width: cellSize, height: cellSize }} aria-hidden />;
 }

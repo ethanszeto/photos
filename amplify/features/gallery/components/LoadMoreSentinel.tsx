@@ -9,7 +9,6 @@ type LoadMoreSentinelProps = {
   scrollRootRef: RefObject<HTMLElement | null>;
   onLoadMore: () => void;
   hasMore: boolean;
-  /** Re-check when the list grows — IO won't re-fire if the sentinel never left view. */
   itemCount: number;
 };
 
