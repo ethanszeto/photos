@@ -77,7 +77,7 @@ export function PasscodeLock({ redirectTo = "/photos" }: PasscodeLockProps) {
   };
 
   return (
-    <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden overscroll-none bg-black">
+    <div className="content relative flex min-h-0 w-full flex-1 flex-col overflow-hidden overscroll-none bg-black">
       <div className="flex flex-1 flex-col items-center justify-center gap-8 px-6 pt-4">
         <div className="text-center">
           <p className="text-sm font-medium tracking-wide text-white/60">Photos</p>
@@ -87,7 +87,7 @@ export function PasscodeLock({ redirectTo = "/photos" }: PasscodeLockProps) {
         {error && <p className="animate-fade-in text-sm font-medium text-red-400">{error}</p>}
       </div>
 
-      <div className="w-full shrink-0 pb-[max(5rem,env(safe-area-inset-bottom))]">
+      <div className="w-full shrink-0 pb-20">
         <NumberPad onDigit={handleDigit} onDelete={handleDelete} disabled={submitting} />
       </div>
     </div>
