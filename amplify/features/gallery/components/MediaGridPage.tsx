@@ -75,7 +75,7 @@ export function MediaGridPage({
   };
 
   return (
-    <div className="content flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-black text-white">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-black text-white">
       <header className="sticky top-0 z-30 flex items-center justify-between bg-black/80 px-4 py-3 backdrop-blur-xl">
         <div className="flex min-w-0 items-center gap-2">
           {headerLeading}
@@ -104,7 +104,7 @@ export function MediaGridPage({
 
       <div className="relative min-h-0 flex-1">
         {items.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center px-6 pb-bottom-nav text-center">
+          <div className="flex h-full flex-col items-center justify-center px-6 pb-14 text-center">
             <p className="text-lg font-medium text-white/80">{emptyTitle}</p>
             <p className="mt-2 max-w-xs text-sm text-white/50">{emptyDescription}</p>
           </div>

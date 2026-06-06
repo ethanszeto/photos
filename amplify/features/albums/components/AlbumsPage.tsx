@@ -19,7 +19,7 @@ export function AlbumsPage({ initialAlbums }: AlbumsPageProps) {
   };
 
   return (
-    <div className="content flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-black text-white">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-black text-white">
       <header className="sticky top-0 z-30 flex items-center justify-between bg-black/80 px-4 py-3 backdrop-blur-xl">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Albums</h1>
@@ -39,7 +39,7 @@ export function AlbumsPage({ initialAlbums }: AlbumsPageProps) {
         </button>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-bottom-nav [-webkit-overflow-scrolling:touch]" data-albums-scroll>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-14 [-webkit-overflow-scrolling:touch]" data-albums-scroll>
         {initialAlbums.length === 0 ? (
           <div className="flex h-full min-h-[50vh] flex-col items-center justify-center px-6 text-center">
             <p className="text-lg font-medium text-white/80">No Albums Yet</p>

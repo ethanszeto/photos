@@ -4,7 +4,6 @@
   --background: #000000;
   --foreground: #f5f5f5;
   --bottom-nav-height: 3.5rem;
-  --bottom-nav-offset: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
 }
 
 @theme inline {
@@ -46,10 +45,6 @@
 
   .animate-fade-in {
     animation: fade-in 0.2s ease-out;
-  }
-
-  .pb-bottom-nav {
-    padding-bottom: var(--bottom-nav-offset);
   }
 
   @keyframes sheet-backdrop-in {
@@ -106,17 +101,6 @@
 }
 
 /* Outside @layer so these always apply (Tailwind v4 won't purge) */
-/* Top/horizontal insets for app screens — bottom handled by bottom-nav position. */
-.content {
-  padding-top: env(safe-area-inset-top);
-  padding-right: env(safe-area-inset-right);
-  padding-left: env(safe-area-inset-left);
-}
-
-.content-safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
 #app-shell {
   box-sizing: border-box;
   display: flex;
@@ -140,9 +124,6 @@
   background-color: #000000;
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
 }
 
 #app-shell > * {

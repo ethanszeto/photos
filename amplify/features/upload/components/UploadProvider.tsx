@@ -216,7 +216,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
   };
 
   const toastBottomClass =
-    "fixed left-4 right-4 z-40 mx-auto max-w-md bottom-[calc(var(--bottom-nav-offset)+0.75rem)]";
+    "fixed bottom-[4.25rem] left-4 right-4 z-40 mx-auto max-w-md";
 
   const batchLabel = batch
     ? batch.phase === "done"

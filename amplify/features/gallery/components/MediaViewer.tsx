@@ -127,7 +127,7 @@ export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) 
 
   return (
     <div
-      className="content content-safe-bottom fixed inset-0 z-50 box-border flex flex-col overflow-hidden overscroll-none bg-black"
+      className="fixed inset-0 z-50 box-border flex flex-col overflow-hidden overscroll-none bg-black pt-12 pb-4"
       data-media-viewer
       role="dialog"
       aria-modal="true"

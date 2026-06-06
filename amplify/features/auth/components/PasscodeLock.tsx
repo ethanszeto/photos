@@ -77,7 +77,7 @@ export function PasscodeLock({ redirectTo = "/photos" }: PasscodeLockProps) {
   };
 
   return (
-    <div className="content content-safe-bottom relative flex min-h-0 w-full flex-1 flex-col overflow-hidden overscroll-none bg-black">
+    <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden overscroll-none bg-black pt-12 pb-8">
       <div className="flex flex-1 flex-col items-center justify-center gap-8 px-6 pt-4">
         <div className="text-center">
           <p className="text-sm font-medium tracking-wide text-white/60">Photos</p>
