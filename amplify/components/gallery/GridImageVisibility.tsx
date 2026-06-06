@@ -7,7 +7,6 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -16,7 +15,6 @@ type VisibilityCallback = (visible: boolean) => void;
 
 type GridImageVisibilityContextValue = {
   observe: (element: Element, onVisible: VisibilityCallback) => () => void;
-  isScrollIdle: boolean;
 };
 
 const GridImageVisibilityContext = createContext<GridImageVisibilityContextValue | null>(null);
@@ -24,23 +22,12 @@ const GridImageVisibilityContext = createContext<GridImageVisibilityContextValue
 type GridImageVisibilityProviderProps = {
   scrollRef: RefObject<HTMLElement | null>;
   rootMargin: string;
-  /** When true, defer new image loads until scroll settles (mega-wide grid). */
-  gateLoadsWhileScrolling?: boolean;
   children: ReactNode;
 };
 
-const SCROLL_IDLE_MS = 120;
-
-export function GridImageVisibilityProvider({
-  scrollRef,
-  rootMargin,
-  gateLoadsWhileScrolling = false,
-  children,
-}: GridImageVisibilityProviderProps) {
+export function GridImageVisibilityProvider({ scrollRef, rootMargin, children }: GridImageVisibilityProviderProps) {
   const callbacksRef = useRef(new Map<Element, VisibilityCallback>());
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const [isScrollIdle, setIsScrollIdle] = useState(true);
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const observe = useCallback((element: Element, onVisible: VisibilityCallback) => {
     callbacksRef.current.set(element, onVisible);
@@ -75,27 +62,7 @@ export function GridImageVisibilityProvider({
     };
   }, [scrollRef, rootMargin]);
 
-  useEffect(() => {
-    if (!gateLoadsWhileScrolling) return;
-    const root = scrollRef.current;
-    if (!root) return;
-
-    const markScrolling = () => {
-      setIsScrollIdle(false);
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = setTimeout(() => {
-        setIsScrollIdle(true);
-      }, SCROLL_IDLE_MS);
-    };
-
-    root.addEventListener("scroll", markScrolling, { passive: true });
-    return () => {
-      root.removeEventListener("scroll", markScrolling);
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    };
-  }, [gateLoadsWhileScrolling, scrollRef]);
-
-  const value = useMemo(() => ({ observe, isScrollIdle }), [observe, isScrollIdle]);
+  const value = useMemo(() => ({ observe }), [observe]);
 
   return <GridImageVisibilityContext.Provider value={value}>{children}</GridImageVisibilityContext.Provider>;
 }

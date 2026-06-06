@@ -61,11 +61,7 @@ function GalleryGridInner({
   const { layout, awarenessFocalItemIndex, clearAwarenessFocal, zoomInAt } = useZoom();
 
   return (
-    <GridImageVisibilityProvider
-      scrollRef={scrollContainerRef}
-      rootMargin={layout.imageLoadMargin}
-      gateLoadsWhileScrolling={layout.thumbnailTier === "mini"}
-    >
+    <GridImageVisibilityProvider scrollRef={scrollContainerRef} rootMargin={layout.imageLoadMargin}>
       <VirtualizedGrid
       ref={gridRef}
       parentRef={scrollContainerRef}

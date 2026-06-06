@@ -36,36 +36,16 @@ export const MediaCell = memo(function MediaCell({
   onLiteZoom,
 }: MediaCellProps) {
   const shellRef = useRef<HTMLElement>(null);
-  const isVisibleRef = useRef(false);
   const [shouldLoadImage, setShouldLoadImage] = useState(false);
-  const { observe, isScrollIdle } = useGridImageVisibility();
+  const { observe } = useGridImageVisibility();
   const thumbnailUrl = getThumbnailUrl(item, thumbnailTier);
-
-  const updateImageLoad = (visible: boolean, scrollIdle: boolean) => {
-    if (!visible) {
-      setShouldLoadImage(false);
-      return;
-    }
-    if (!liteCell || scrollIdle) {
-      setShouldLoadImage(true);
-    }
-  };
 
   useEffect(() => {
     const node = shellRef.current;
     if (!node) return;
 
-    return observe(node, (visible) => {
-      isVisibleRef.current = visible;
-      updateImageLoad(visible, isScrollIdle);
-    });
-  }, [observe, isScrollIdle, liteCell]);
-
-  useEffect(() => {
-    if (liteCell && isScrollIdle && isVisibleRef.current) {
-      setShouldLoadImage(true);
-    }
-  }, [isScrollIdle, liteCell]);
+    return observe(node, setShouldLoadImage);
+  }, [observe]);
 
   const shellStyle = { width: cellSize, height: cellSize };
 
