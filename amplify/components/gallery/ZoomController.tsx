@@ -217,7 +217,7 @@ export function ZoomProvider({ children, containerRef, itemCount }: ZoomProvider
       element.removeEventListener("touchend", onTouchEnd);
       element.removeEventListener("wheel", onWheel);
     };
-  }, [applyAwarenessZoom, containerRef, focalFromClientPoint, zoomLevel]);
+  }, [applyAwarenessZoom, containerRef, focalFromClientPoint]);
 
   const value = useMemo(
     () => ({

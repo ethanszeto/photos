@@ -11,6 +11,7 @@ import {
   type RefObject,
 } from "react";
 import { MediaCell, MediaCellPlaceholder } from "@/components/gallery/MediaCell";
+import { computeVisibleImageRange, isIndexInRange, rowVisibleOverlap } from "@/lib/gallery-image-load";
 import { getCenterItemIndex, getRowCount, type GridLayoutMetrics } from "@/lib/gallery-grid-layout";
 import type { MediaItem } from "@/types";
 
@@ -21,7 +22,6 @@ export type VirtualizedGridHandle = {
   getVirtualizer: () => Virtualizer<HTMLDivElement, Element> | null;
 };
 
-/** Height reserved below the virtualized rows for the infinite-scroll sentinel. */
 const LOAD_MORE_SENTINEL_HEIGHT = 80;
 
 type VirtualizedGridProps = {
@@ -42,8 +42,8 @@ type LayoutSnapshot = {
 };
 
 /**
- * Row virtualizer with fixed row stride (no measureElement).
- * All sizing comes from layout (gallery-zoom-levels.json + computeGridLayout).
+ * Row virtualizer — only mounted rows render DOM nodes and <img> elements.
+ * Unmounting a row releases its cells and decoded thumbnails.
  */
 export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGridProps>(function VirtualizedGrid(
   { items, layout, awarenessFocalItemIndex, onAwarenessFocalApplied, onSelect, onLiteZoom, parentRef, loadMoreSentinel },
@@ -81,7 +81,6 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
     getItemKey,
   });
 
-  // Re-sync stride for mounted rows when tile size changes (skip scanning full rowCount).
   useEffect(() => {
     if (rowHeight <= 0) return;
     for (const virtualRow of virtualizer.getVirtualItems()) {
@@ -89,16 +88,26 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
     }
   }, [rowHeight, virtualizer]);
 
+  const virtualRows = virtualizer.getVirtualItems();
+  const scrollEl = parentRef.current;
+  const scrollOffset = virtualizer.scrollOffset ?? scrollEl?.scrollTop ?? 0;
+  const visibleRange = computeVisibleImageRange(
+    virtualRows,
+    scrollOffset,
+    scrollEl?.clientHeight ?? 0,
+    columns,
+    items.length,
+  );
+
   const getCenterIndex = useCallback(() => {
-    const scrollEl = parentRef.current;
-    if (!scrollEl) return 0;
-    return getCenterItemIndex(scrollEl.scrollTop, scrollEl.clientHeight, rowHeight, columns, items.length);
+    const el = parentRef.current;
+    if (!el) return 0;
+    return getCenterItemIndex(el.scrollTop, el.clientHeight, rowHeight, columns, items.length);
   }, [parentRef, rowHeight, columns, items.length]);
 
-  // Preserve focal item when zoom or resize changes column count / row height.
   useLayoutEffect(() => {
-    const scrollEl = parentRef.current;
-    if (!scrollEl || rowCount === 0) return;
+    const el = parentRef.current;
+    if (!el || rowCount === 0) return;
 
     const prev = layoutSnapshot.current;
     const next: LayoutSnapshot = { columns, rowHeight, gapPx };
@@ -106,7 +115,7 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
     if (prev && (prev.columns !== columns || prev.rowHeight !== rowHeight || prev.gapPx !== gapPx)) {
       const focalIndex =
         awarenessFocalItemIndex ??
-        getCenterItemIndex(scrollEl.scrollTop, scrollEl.clientHeight, prev.rowHeight, prev.columns, items.length);
+        getCenterItemIndex(el.scrollTop, el.clientHeight, prev.rowHeight, prev.columns, items.length);
       const rowIndex = Math.floor(focalIndex / columns);
       virtualizer.scrollToIndex(rowIndex, { align: "center", behavior: "auto" });
       if (awarenessFocalItemIndex != null) {
@@ -155,15 +164,10 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
   const rowGapStyle = gapPx > 0 ? `${gapPx}px` : "0";
 
   return (
-    <div
-      style={{
-        height: `${scrollHeight}px`,
-        width: "100%",
-        position: "relative",
-      }}
-    >
-      {virtualizer.getVirtualItems().map((virtualRow) => {
+    <div style={{ height: `${scrollHeight}px`, width: "100%", position: "relative" }}>
+      {virtualRows.map((virtualRow) => {
         const startIndex = virtualRow.index * columns;
+        const visibleOverlap = rowVisibleOverlap(virtualRow.index, columns, items.length, visibleRange);
 
         return (
           <div
@@ -176,8 +180,7 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
               display: "grid",
               gridTemplateColumns,
               gap: rowGapStyle,
-              contentVisibility: "auto",
-              containIntrinsicSize: `${rowHeight}px`,
+              contain: "layout style paint",
             }}
           >
             {Array.from({ length: columns }, (_, col) => {
@@ -185,7 +188,11 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
               if (!item) {
                 return <MediaCellPlaceholder key={`empty-${virtualRow.index}-${col}`} cellSize={cellWidth} />;
               }
+
               const itemIndex = startIndex + col;
+              const isVisibleImage =
+                visibleOverlap != null && isIndexInRange(itemIndex, visibleOverlap);
+
               return (
                 <MediaCell
                   key={item.id}
@@ -194,6 +201,7 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
                   cellSize={cellWidth}
                   thumbnailTier={thumbnailTier}
                   liteCell={liteCell}
+                  isVisibleImage={isVisibleImage}
                   onSelect={onSelect}
                   onLiteZoom={onLiteZoom}
                 />
@@ -203,10 +211,7 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
         );
       })}
       {loadMoreSentinel ? (
-        <div
-          className="absolute left-0 w-full"
-          style={{ top: totalSize, height: LOAD_MORE_SENTINEL_HEIGHT }}
-        >
+        <div className="absolute left-0 w-full" style={{ top: totalSize, height: LOAD_MORE_SENTINEL_HEIGHT }}>
           {loadMoreSentinel}
         </div>
       ) : null}

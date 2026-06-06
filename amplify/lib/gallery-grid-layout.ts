@@ -26,8 +26,6 @@ export type GridLayoutMetrics = {
   overscan: number;
   gridTemplateColumns: string;
   thumbnailTier: ThumbnailTier;
-  /** IntersectionObserver band for mounting <img> elements (tighter than virtual overscan). */
-  imageLoadMargin: string;
   /** Tap zooms in (no viewer); see gallery-zoom-levels.json liteCell. */
   liteCell: boolean;
 };
@@ -125,16 +123,6 @@ export function getThumbnailUrl(item: MediaItem, tier: ThumbnailTier): string {
   }
 }
 
-/** Vertical rootMargin for when cells mount/unmount thumbnail images. */
-export function getImageLoadRootMargin(viewportHeight: number, thumbnailTier: ThumbnailTier): string {
-  if (thumbnailTier === "mini") {
-    const px = Math.min(160, Math.max(48, Math.round(viewportHeight * 0.15)));
-    return `${px}px 0px`;
-  }
-  const px = Math.min(800, Math.max(400, Math.round(viewportHeight * 0.6)));
-  return `${px}px 0px`;
-}
-
 type GridPointLayout = {
   columns: number;
   cellWidth: number;
@@ -223,7 +211,6 @@ export function computeGridLayout({
     overscan,
     gridTemplateColumns: `repeat(${columns}, ${cellWidth}px)`,
     thumbnailTier,
-    imageLoadMargin: getImageLoadRootMargin(viewportHeight, thumbnailTier),
     liteCell: spec.liteCell === true,
   };
 }

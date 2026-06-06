@@ -1,8 +1,8 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
-import { useGridImageVisibility } from "@/components/gallery/GridImageVisibility";
-import { getAspectRatioStyle, getThumbnailUrl, type ThumbnailTier } from "@/lib/gallery-grid-layout";
+import { memo } from "react";
+import { GridCellImage } from "@/components/gallery/GridCellImage";
+import { getAspectRatioStyle, type ThumbnailTier } from "@/lib/gallery-grid-layout";
 import type { MediaItem } from "@/types";
 
 type MediaCellProps = {
@@ -11,6 +11,7 @@ type MediaCellProps = {
   cellSize: number;
   thumbnailTier: ThumbnailTier;
   liteCell: boolean;
+  isVisibleImage: boolean;
   onSelect: (item: MediaItem) => void;
   onLiteZoom: (itemIndex: number) => void;
 };
@@ -23,8 +24,7 @@ function formatDuration(seconds: number): string {
 }
 
 /**
- * Fixed-size grid cell: shell always mounted; image only near viewport (shared observer).
- * Lite cells zoom in on tap instead of opening the viewer.
+ * Fixed-size grid cell. Only mounted rows exist (virtualizer); thumbnails load on mount.
  */
 export const MediaCell = memo(function MediaCell({
   item,
@@ -32,44 +32,19 @@ export const MediaCell = memo(function MediaCell({
   cellSize,
   thumbnailTier,
   liteCell,
+  isVisibleImage,
   onSelect,
   onLiteZoom,
 }: MediaCellProps) {
-  const shellRef = useRef<HTMLElement>(null);
-  const [shouldLoadImage, setShouldLoadImage] = useState(false);
-  const { observe } = useGridImageVisibility();
-  const thumbnailUrl = getThumbnailUrl(item, thumbnailTier);
-
-  useEffect(() => {
-    const node = shellRef.current;
-    if (!node) return;
-
-    return observe(node, setShouldLoadImage);
-  }, [observe]);
-
-  const shellStyle = { width: cellSize, height: cellSize };
-
-  const image =
-    shouldLoadImage && thumbnailUrl ? (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={thumbnailUrl}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        draggable={false}
-        className="h-full w-full object-cover"
-      />
-    ) : null;
+  const image = <GridCellImage item={item} thumbnailTier={thumbnailTier} isVisible={isVisibleImage} />;
 
   if (liteCell) {
     return (
       <div
-        ref={shellRef as React.RefObject<HTMLDivElement>}
         role="presentation"
         onClick={() => onLiteZoom(itemIndex)}
         className="relative shrink-0 cursor-default overflow-hidden bg-zinc-900 active:opacity-90"
-        style={shellStyle}
+        style={{ width: cellSize, height: cellSize }}
       >
         {image}
       </div>
@@ -78,11 +53,10 @@ export const MediaCell = memo(function MediaCell({
 
   return (
     <button
-      ref={shellRef as React.RefObject<HTMLButtonElement>}
       type="button"
       onClick={() => onSelect(item)}
       className="relative shrink-0 overflow-hidden bg-zinc-900 active:opacity-90"
-      style={shellStyle}
+      style={{ width: cellSize, height: cellSize }}
       aria-label={`Open ${item.mediaType} taken ${item.takenAt}`}
     >
       <div

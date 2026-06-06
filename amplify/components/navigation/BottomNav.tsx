@@ -31,11 +31,7 @@ export function BottomNav() {
   const { openUpload } = useUpload();
 
   return (
-    <nav
-      className="shrink-0 border-t border-white/10 bg-black/80 backdrop-blur-xl"
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-      aria-label="Main navigation"
-    >
+    <nav className="bottom-nav" aria-label="Main navigation">
       <div className="mx-auto flex h-14 max-w-lg items-stretch justify-around px-2">
         {TABS.map((tab) => {
           const active =
