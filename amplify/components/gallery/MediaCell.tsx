@@ -1,17 +1,15 @@
 "use client";
 
-import { memo, useEffect, useRef, useState, type RefObject } from "react";
-import { getAspectRatioStyle } from "@/lib/gallery-grid-layout";
+import { memo, useEffect, useRef, useState } from "react";
+import { useGridImageVisibility } from "@/components/gallery/GridImageVisibility";
+import { getAspectRatioStyle, getThumbnailUrl, type ThumbnailTier } from "@/lib/gallery-grid-layout";
 import type { MediaItem } from "@/types";
 
 type MediaCellProps = {
   item: MediaItem;
   itemIndex: number;
   cellSize: number;
-  useMediumThumbnail: boolean;
-  scrollRootRef: RefObject<HTMLElement | null>;
-  /** IntersectionObserver prefetch band — from getImagePrefetchRootMargin(viewportHeight). */
-  imagePrefetchMargin: string;
+  thumbnailTier: ThumbnailTier;
   liteCell: boolean;
   onSelect: (item: MediaItem) => void;
   onLiteZoom: (itemIndex: number) => void;
@@ -24,88 +22,70 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining.toString().padStart(2, "0")}`;
 }
 
-function CellImage({
-  shouldLoadImage,
-  thumbnailUrl,
-  width,
-  height,
-}: {
-  shouldLoadImage: boolean;
-  thumbnailUrl: string;
-  width?: number;
-  height?: number;
-}) {
-  return (
-    <div
-      className="flex h-full w-full items-center justify-center"
-      style={{ aspectRatio: getAspectRatioStyle(width, height) }}
-    >
-      {shouldLoadImage && thumbnailUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={thumbnailUrl}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          draggable={false}
-          className="h-full w-full object-cover"
-        />
-      ) : null}
-    </div>
-  );
-}
-
 /**
- * Fixed-size grid cell: placeholder shell always mounted; image only near viewport.
+ * Fixed-size grid cell: shell always mounted; image only near viewport (shared observer).
  * Lite cells zoom in on tap instead of opening the viewer.
  */
 export const MediaCell = memo(function MediaCell({
   item,
   itemIndex,
   cellSize,
-  useMediumThumbnail,
-  scrollRootRef,
-  imagePrefetchMargin,
+  thumbnailTier,
   liteCell,
   onSelect,
   onLiteZoom,
 }: MediaCellProps) {
   const shellRef = useRef<HTMLElement>(null);
+  const isVisibleRef = useRef(false);
   const [shouldLoadImage, setShouldLoadImage] = useState(false);
-  const thumbnailUrl = useMediumThumbnail ? item.mediumUrl : item.smallUrl;
+  const { observe, isScrollIdle } = useGridImageVisibility();
+  const thumbnailUrl = getThumbnailUrl(item, thumbnailTier);
+
+  const updateImageLoad = (visible: boolean, scrollIdle: boolean) => {
+    if (!visible) {
+      setShouldLoadImage(false);
+      return;
+    }
+    if (!liteCell || scrollIdle) {
+      setShouldLoadImage(true);
+    }
+  };
 
   useEffect(() => {
     const node = shellRef.current;
-    const root = scrollRootRef.current;
-    if (!node || !root) return;
+    if (!node) return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          setShouldLoadImage(true);
-        }
-      },
-      { root, rootMargin: imagePrefetchMargin, threshold: 0 },
-    );
+    return observe(node, (visible) => {
+      isVisibleRef.current = visible;
+      updateImageLoad(visible, isScrollIdle);
+    });
+  }, [observe, isScrollIdle, liteCell]);
 
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [scrollRootRef, imagePrefetchMargin]);
+  useEffect(() => {
+    if (liteCell && isScrollIdle && isVisibleRef.current) {
+      setShouldLoadImage(true);
+    }
+  }, [isScrollIdle, liteCell]);
 
   const shellStyle = { width: cellSize, height: cellSize };
-  const image = (
-    <CellImage
-      shouldLoadImage={shouldLoadImage}
-      thumbnailUrl={thumbnailUrl}
-      width={item.width}
-      height={item.height}
-    />
-  );
+
+  const image =
+    shouldLoadImage && thumbnailUrl ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={thumbnailUrl}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        draggable={false}
+        className="h-full w-full object-cover"
+      />
+    ) : null;
 
   if (liteCell) {
     return (
       <div
-        ref={shellRef as RefObject<HTMLDivElement>}
+        ref={shellRef as React.RefObject<HTMLDivElement>}
         role="presentation"
         onClick={() => onLiteZoom(itemIndex)}
         className="relative shrink-0 cursor-default overflow-hidden bg-zinc-900 active:opacity-90"
@@ -118,14 +98,19 @@ export const MediaCell = memo(function MediaCell({
 
   return (
     <button
-      ref={shellRef as RefObject<HTMLButtonElement>}
+      ref={shellRef as React.RefObject<HTMLButtonElement>}
       type="button"
       onClick={() => onSelect(item)}
       className="relative shrink-0 overflow-hidden bg-zinc-900 active:opacity-90"
       style={shellStyle}
       aria-label={`Open ${item.mediaType} taken ${item.takenAt}`}
     >
-      {image}
+      <div
+        className="flex h-full w-full items-center justify-center"
+        style={{ aspectRatio: getAspectRatioStyle(item.width, item.height) }}
+      >
+        {image}
+      </div>
 
       {item.mediaType === "video" && item.duration != null && (
         <span className="absolute bottom-1 right-1 rounded px-1 py-0.5 text-[10px] font-medium leading-none text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">

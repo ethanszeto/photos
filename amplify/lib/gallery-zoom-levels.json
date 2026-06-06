@@ -7,11 +7,12 @@
       "columns": 32,
       "gapPx": 0,
       "liteCell": true,
+      "thumbnailTier": "mini",
       "overscan": {
-        "max": 96,
-        "min": 10,
-        "viewportMultiplier": 2.5,
-        "minAtLeastRowsInView": true
+        "max": 18,
+        "min": 4,
+        "viewportMultiplier": 1,
+        "maxMountedCells": 1600
       }
     },
     {

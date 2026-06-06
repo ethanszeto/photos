@@ -111,6 +111,7 @@ export type DynamoMediaItem = {
   uploadedAt: string;
   modifiedAt: string;
   originalUrl: string;
+  miniUrl: string;
   smallUrl: string;
   mediumUrl: string;
   mimeType: string;
@@ -125,6 +126,7 @@ export type DynamoGalleryItem = {
   id: string;
   mediaType: MediaType;
   takenAt: string;
+  miniUrl: string;
   smallUrl: string;
   mediumUrl: string;
   width?: number | null;
@@ -137,6 +139,7 @@ export type MediaItem = {
   id: string;
   mediaType: MediaType;
   takenAt: string;
+  miniUrl: string;
   smallUrl: string;
   mediumUrl: string;
   width?: number;

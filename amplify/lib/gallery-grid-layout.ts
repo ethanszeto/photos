@@ -1,5 +1,8 @@
 import zoomConfig from "@/lib/gallery-zoom-levels.json";
 import { SMALL_THUMBNAIL_MAX_PX } from "@/lib/media-constants";
+import type { MediaItem } from "@/types";
+
+export type ThumbnailTier = "mini" | "small" | "medium";
 
 /** Display rules per zoom step — edit gallery-zoom-levels.json to add or tune levels. */
 export const GALLERY_ZOOM_LEVELS = zoomConfig.levels;
@@ -22,8 +25,9 @@ export type GridLayoutMetrics = {
   rowHeight: number;
   overscan: number;
   gridTemplateColumns: string;
-  useMediumThumbnail: boolean;
-  imagePrefetchMargin: string;
+  thumbnailTier: ThumbnailTier;
+  /** IntersectionObserver band for mounting <img> elements (tighter than virtual overscan). */
+  imageLoadMargin: string;
   /** Tap zooms in (no viewer); see gallery-zoom-levels.json liteCell. */
   liteCell: boolean;
 };
@@ -70,13 +74,28 @@ export function getRowCount(itemCount: number, columns: number): number {
   return Math.ceil(itemCount / columns);
 }
 
-function getOverscanRowCount(viewportHeight: number, rowHeight: number, spec: ZoomOverscanSpec): number {
+function getOverscanRowCount(
+  viewportHeight: number,
+  rowHeight: number,
+  columns: number,
+  spec: ZoomOverscanSpec,
+): number {
   if (rowHeight <= 0) return spec.min;
 
   const rowsInView = Math.max(1, Math.ceil(viewportHeight / rowHeight));
   const target = Math.ceil(rowsInView * spec.viewportMultiplier);
-  const minOverscan = spec.minAtLeastRowsInView ? Math.min(rowsInView, spec.max) : spec.min;
-  return Math.min(spec.max, Math.max(minOverscan, target));
+  const minAtLeastRowsInView = "minAtLeastRowsInView" in spec && spec.minAtLeastRowsInView === true;
+  const minOverscan = minAtLeastRowsInView ? Math.min(rowsInView, spec.max) : spec.min;
+  let overscan = Math.min(spec.max, Math.max(minOverscan, target));
+
+  const maxMountedCells = "maxMountedCells" in spec ? spec.maxMountedCells : undefined;
+  if (maxMountedCells != null && columns > 0) {
+    const maxRows = Math.ceil(maxMountedCells / columns);
+    const overscanCap = Math.max(0, Math.floor((maxRows - rowsInView) / 2));
+    overscan = Math.min(overscan, overscanCap);
+  }
+
+  return overscan;
 }
 
 export function shouldUseMediumThumbnail(cellWidth: number, devicePixelRatio: number): boolean {
@@ -84,9 +103,35 @@ export function shouldUseMediumThumbnail(cellWidth: number, devicePixelRatio: nu
   return cellWidth * devicePixelRatio > SMALL_THUMBNAIL_MAX_PX * 0.92;
 }
 
-/** IntersectionObserver rootMargin for thumbnail prefetch (vertical only). */
-export function getImagePrefetchRootMargin(viewportHeight: number): string {
-  const px = Math.min(1200, Math.max(640, Math.round(viewportHeight * 0.9)));
+/** Pick thumbnail variant for a zoom step (mini tier from JSON overrides size heuristics). */
+export function resolveThumbnailTier(
+  spec: ZoomLevelSpec,
+  cellWidth: number,
+  devicePixelRatio: number,
+): ThumbnailTier {
+  if (spec.thumbnailTier === "mini") return "mini";
+  if (shouldUseMediumThumbnail(cellWidth, devicePixelRatio)) return "medium";
+  return "small";
+}
+
+export function getThumbnailUrl(item: MediaItem, tier: ThumbnailTier): string {
+  switch (tier) {
+    case "mini":
+      return item.miniUrl;
+    case "medium":
+      return item.mediumUrl;
+    case "small":
+      return item.smallUrl;
+  }
+}
+
+/** Vertical rootMargin for when cells mount/unmount thumbnail images. */
+export function getImageLoadRootMargin(viewportHeight: number, thumbnailTier: ThumbnailTier): string {
+  if (thumbnailTier === "mini") {
+    const px = Math.min(160, Math.max(48, Math.round(viewportHeight * 0.15)));
+    return `${px}px 0px`;
+  }
+  const px = Math.min(800, Math.max(400, Math.round(viewportHeight * 0.6)));
   return `${px}px 0px`;
 }
 
@@ -165,7 +210,8 @@ export function computeGridLayout({
   const gapPx = spec.gapPx;
   const cellWidth = getCellWidth(containerWidth, columns, gapPx);
   const rowHeight = getRowHeight(containerWidth, columns, gapPx);
-  const overscan = getOverscanRowCount(viewportHeight, rowHeight, spec.overscan);
+  const overscan = getOverscanRowCount(viewportHeight, rowHeight, columns, spec.overscan);
+  const thumbnailTier = resolveThumbnailTier(spec, cellWidth, devicePixelRatio);
 
   return {
     zoomLevel: spec.level as ZoomLevel,
@@ -176,8 +222,8 @@ export function computeGridLayout({
     rowHeight,
     overscan,
     gridTemplateColumns: `repeat(${columns}, ${cellWidth}px)`,
-    useMediumThumbnail: shouldUseMediumThumbnail(cellWidth, devicePixelRatio),
-    imagePrefetchMargin: getImagePrefetchRootMargin(viewportHeight),
+    thumbnailTier,
+    imageLoadMargin: getImageLoadRootMargin(viewportHeight, thumbnailTier),
     liteCell: spec.liteCell === true,
   };
 }

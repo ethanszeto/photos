@@ -4,7 +4,7 @@ export {
   getAspectRatioStyle,
   getCenterItemIndex,
   getCellWidth,
-  getImagePrefetchRootMargin,
+  getImageLoadRootMargin,
   getRowCount,
   getRowHeight,
   type GridLayoutMetrics,

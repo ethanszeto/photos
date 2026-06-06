@@ -1,4 +1,7 @@
-/** Max edge length of small WebP thumbs (see lambda/mediaPipelines/image.js). */
+/** Max edge length of mini WebP thumbs (see lambda/utils/thumbnails.js). */
+export const MINI_THUMBNAIL_MAX_PX = 64;
+
+/** Max edge length of small WebP thumbs (see lambda/utils/thumbnails.js). */
 export const SMALL_THUMBNAIL_MAX_PX = 300;
 
 /** Max edge length of medium WebP thumbs (see lambda/mediaPipelines/image.js). */

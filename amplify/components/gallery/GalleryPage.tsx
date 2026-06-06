@@ -26,14 +26,14 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
   const gridRef = useRef<VirtualizedGridHandle>(null);
   const [items, setItems] = useState<MediaItem[]>(initialItems);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreRef = useRef(false);
   const [refreshing, setRefreshing] = useState(false);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const idToIndexRef = useRef(new Map<string, number>());
 
   const loadMore = useCallback(async () => {
-    if (!cursor || loadingMore) return;
-    setLoadingMore(true);
+    if (!cursor || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
     try {
       const response = await fetch(`/api/gallery?cursor=${encodeURIComponent(cursor)}`, noStoreFetchInit);
       if (!response.ok) throw new Error("Failed to load more media");
@@ -43,9 +43,9 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
     } catch (error) {
       console.error("Infinite scroll error:", error);
     } finally {
-      setLoadingMore(false);
+      loadingMoreRef.current = false;
     }
-  }, [cursor, loadingMore]);
+  }, [cursor]);
 
   const handleSelect = useCallback((item: MediaItem) => {
     const index = idToIndexRef.current.get(item.id);
@@ -155,7 +155,6 @@ export function GalleryPage({ initialItems, initialCursor }: GalleryPageProps) {
               onSelect={handleSelect}
               onLoadMore={loadMore}
               hasMore={cursor != null}
-              loadingMore={loadingMore}
             />
           </div>
         )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { GridImageVisibilityProvider } from "@/components/gallery/GridImageVisibility";
 import { VirtualizedGrid, type VirtualizedGridHandle } from "@/components/gallery/VirtualizedGrid";
 import { useZoom, ZoomProvider } from "@/components/gallery/ZoomController";
 import type { MediaItem } from "@/types";
@@ -12,19 +13,16 @@ type GalleryGridInnerProps = {
   onSelect: (item: MediaItem) => void;
   onLoadMore: () => void;
   hasMore: boolean;
-  loadingMore: boolean;
 };
 
 function LoadMoreSentinel({
   scrollRootRef,
   onLoadMore,
   hasMore,
-  loadingMore,
 }: {
   scrollRootRef: React.RefObject<HTMLDivElement | null>;
   onLoadMore: () => void;
   hasMore: boolean;
-  loadingMore: boolean;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +34,7 @@ function LoadMoreSentinel({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && !loadingMore) {
+        if (entries[0]?.isIntersecting) {
           onLoadMore();
         }
       },
@@ -45,15 +43,11 @@ function LoadMoreSentinel({
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, [hasMore, loadingMore, onLoadMore, scrollRootRef]);
+  }, [hasMore, onLoadMore, scrollRootRef]);
 
   if (!hasMore) return null;
 
-  return (
-    <div ref={sentinelRef} className="flex h-20 items-center justify-center">
-      {loadingMore && <span className="text-xs text-white/40">Loading…</span>}
-    </div>
-  );
+  return <div ref={sentinelRef} className="h-20" aria-hidden />;
 }
 
 function GalleryGridInner({
@@ -63,12 +57,16 @@ function GalleryGridInner({
   onSelect,
   onLoadMore,
   hasMore,
-  loadingMore,
 }: GalleryGridInnerProps) {
   const { layout, awarenessFocalItemIndex, clearAwarenessFocal, zoomInAt } = useZoom();
 
   return (
-    <VirtualizedGrid
+    <GridImageVisibilityProvider
+      scrollRef={scrollContainerRef}
+      rootMargin={layout.imageLoadMargin}
+      gateLoadsWhileScrolling={layout.thumbnailTier === "mini"}
+    >
+      <VirtualizedGrid
       ref={gridRef}
       parentRef={scrollContainerRef}
       items={items}
@@ -78,14 +76,10 @@ function GalleryGridInner({
       onSelect={onSelect}
       onLiteZoom={zoomInAt}
       loadMoreSentinel={
-        <LoadMoreSentinel
-          scrollRootRef={scrollContainerRef}
-          onLoadMore={onLoadMore}
-          hasMore={hasMore}
-          loadingMore={loadingMore}
-        />
+        <LoadMoreSentinel scrollRootRef={scrollContainerRef} onLoadMore={onLoadMore} hasMore={hasMore} />
       }
-    />
+      />
+    </GridImageVisibilityProvider>
   );
 }
 
@@ -95,11 +89,10 @@ type GalleryGridProps = {
   onSelect: (item: MediaItem) => void;
   onLoadMore: () => void;
   hasMore: boolean;
-  loadingMore: boolean;
 };
 
 /** Zoom-aware virtualized grid — single scroll container shared with gesture handlers. */
-export function GalleryGrid({ items, gridRef, onSelect, onLoadMore, hasMore, loadingMore }: GalleryGridProps) {
+export function GalleryGrid({ items, gridRef, onSelect, onLoadMore, hasMore }: GalleryGridProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -117,7 +110,6 @@ export function GalleryGrid({ items, gridRef, onSelect, onLoadMore, hasMore, loa
           onSelect={onSelect}
           onLoadMore={onLoadMore}
           hasMore={hasMore}
-          loadingMore={loadingMore}
         />
       </div>
     </ZoomProvider>

@@ -58,8 +58,7 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
     rowHeight,
     overscan,
     gridTemplateColumns,
-    useMediumThumbnail,
-    imagePrefetchMargin,
+    thumbnailTier,
     liteCell,
   } = layout;
   const rowCount = getRowCount(items.length, columns);
@@ -82,14 +81,12 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
     getItemKey,
   });
 
-  // Apply fixed row stride when tile size changes (no DOM measurement).
+  // Re-sync stride for mounted rows when tile size changes (skip scanning full rowCount).
   useEffect(() => {
-    if (rowHeight <= 0 || rowCount <= 0) return;
-    for (let i = 0; i < rowCount; i++) {
-      virtualizer.resizeItem(i, rowHeight);
+    if (rowHeight <= 0) return;
+    for (const virtualRow of virtualizer.getVirtualItems()) {
+      virtualizer.resizeItem(virtualRow.index, rowHeight);
     }
-    // rowCount intentionally omitted — new rows pick up estimateSize(); only re-sync on stride change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- rowCount read for current virtual range only
   }, [rowHeight, virtualizer]);
 
   const getCenterIndex = useCallback(() => {
@@ -179,6 +176,8 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
               display: "grid",
               gridTemplateColumns,
               gap: rowGapStyle,
+              contentVisibility: "auto",
+              containIntrinsicSize: `${rowHeight}px`,
             }}
           >
             {Array.from({ length: columns }, (_, col) => {
@@ -193,9 +192,7 @@ export const VirtualizedGrid = forwardRef<VirtualizedGridHandle, VirtualizedGrid
                   item={item}
                   itemIndex={itemIndex}
                   cellSize={cellWidth}
-                  useMediumThumbnail={useMediumThumbnail}
-                  scrollRootRef={parentRef}
-                  imagePrefetchMargin={imagePrefetchMargin}
+                  thumbnailTier={thumbnailTier}
                   liteCell={liteCell}
                   onSelect={onSelect}
                   onLiteZoom={onLiteZoom}
