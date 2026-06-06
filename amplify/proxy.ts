@@ -26,7 +26,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (pathname.startsWith("/gallery")) {
+  const protectedAppPrefixes = ["/photos", "/albums", "/gallery"];
+
+  if (protectedAppPrefixes.some((prefix) => pathname.startsWith(prefix))) {
     if (!(await hasValidSession(request))) {
       const loginUrl = new URL("/", request.url);
       loginUrl.searchParams.set("from", pathname);
@@ -39,5 +41,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/gallery/:path*", "/api/:path*"],
+  matcher: ["/photos/:path*", "/albums/:path*", "/gallery/:path*", "/api/:path*"],
 };

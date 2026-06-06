@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 /** Regions that may handle their own touch scrolling or drag gestures. */
-const SCROLL_ALLOW_SELECTOR = "[data-gallery-scroll], [data-media-viewer], [data-upload-sheet]";
+const SCROLL_ALLOW_SELECTOR = "[data-gallery-scroll], [data-albums-scroll], [data-media-viewer], [data-upload-sheet]";
 
 /**
  * iOS PWA: block document rubber-banding; only the gallery grid (and viewer/sheet) may scroll.

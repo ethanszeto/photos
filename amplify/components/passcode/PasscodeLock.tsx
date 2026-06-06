@@ -11,7 +11,7 @@ type PasscodeLockProps = {
   redirectTo?: string;
 };
 
-export function PasscodeLock({ redirectTo = "/gallery" }: PasscodeLockProps) {
+export function PasscodeLock({ redirectTo = "/photos" }: PasscodeLockProps) {
   const router = useRouter();
   const [digits, setDigits] = useState<string[]>([]);
   const [shake, setShake] = useState(false);

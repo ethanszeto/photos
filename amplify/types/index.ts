@@ -165,3 +165,28 @@ export type MediaListResponse = {
 export type LatestMediaResponse = {
   latestTakenAt: string | null;
 };
+
+export type AlbumType = "year" | "user";
+
+/** Client-facing album summary for the albums browser. */
+export type Album = {
+  id: string;
+  name: string;
+  coverUrl: string | null;
+  type: AlbumType;
+};
+
+export type AlbumListResponse = {
+  albums: Album[];
+};
+
+/** Future: metadata record at PK = ALBUM, SK = albumId */
+export type DynamoAlbumMetaItem = {
+  PK: "ALBUM";
+  SK: string;
+  id: string;
+  name: string;
+  coverUrl?: string | null;
+  itemCount?: number;
+  createdAt: string;
+};

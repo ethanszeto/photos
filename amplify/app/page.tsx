@@ -10,11 +10,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
   const authenticated = await isAuthenticatedServer();
 
+  const appPaths = ["/photos", "/albums", "/gallery"];
+  const fromPath = params.from;
+  const isAppPath = fromPath != null && appPaths.some((prefix) => fromPath.startsWith(prefix));
+  const resolvedFrom = fromPath?.startsWith("/gallery") ? "/photos" : fromPath;
+
   if (authenticated) {
-    redirect(params.from?.startsWith("/gallery") ? params.from : "/gallery");
+    redirect(isAppPath && resolvedFrom ? resolvedFrom : "/photos");
   }
 
-  const redirectTo = params.from?.startsWith("/gallery") ? params.from : "/gallery";
+  const redirectTo = isAppPath && resolvedFrom ? resolvedFrom : "/photos";
 
   return <PasscodeLock redirectTo={redirectTo} />;
 }
