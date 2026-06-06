@@ -1,6 +1,6 @@
 "use client";
 
-import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   forwardRef,
   useCallback,

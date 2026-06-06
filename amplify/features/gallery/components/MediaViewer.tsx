@@ -2,6 +2,7 @@
 
 import { ChevronLeft } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ViewerZoomableImage } from "@/features/gallery/components/ViewerZoomableImage";
 import { noStoreFetchInit } from "@/shared/lib/no-store";
 import type { MediaDetail, MediaItem } from "@/types";
 
@@ -58,32 +59,42 @@ function useNeighborPreload(details: Map<string, MediaDetail>, items: MediaItem[
 export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) {
   const [index, setIndex] = useState(initialIndex);
   const [details, setDetails] = useState<Map<string, MediaDetail>>(new Map());
-  const [loadingId, setLoadingId] = useState<string | null>(null);
-  const touchStartX = useRef<number | null>(null);
+  const [failedIds, setFailedIds] = useState<Set<string>>(() => new Set());
+  const detailsRef = useRef(details);
   const item = items[index];
   const detail = item ? details.get(item.id) : undefined;
 
   useNeighborPreload(details, items, index);
 
   useEffect(() => {
-    if (!item || details.has(item.id)) return;
+    detailsRef.current = details;
+  }, [details]);
+
+  useEffect(() => {
+    if (!item) return;
+    const itemId = item.id;
+    if (detailsRef.current.has(itemId)) return;
 
     let cancelled = false;
-    setLoadingId(item.id);
 
     void (async () => {
       try {
-        const response = await fetch(`/api/media/${encodeURIComponent(item.id)}`, noStoreFetchInit);
+        const response = await fetch(`/api/media/${encodeURIComponent(itemId)}`, noStoreFetchInit);
         if (!response.ok) throw new Error("Failed to load media detail");
         const data = (await response.json()) as MediaDetail;
         if (!cancelled) {
-          setDetails((current) => new Map(current).set(item.id, data));
+          setDetails((current) => new Map(current).set(itemId, data));
+          setFailedIds((current) => {
+            if (!current.has(itemId)) return current;
+            const next = new Set(current);
+            next.delete(itemId);
+            return next;
+          });
         }
       } catch (error) {
         console.error("Media detail fetch error:", error);
-      } finally {
         if (!cancelled) {
-          setLoadingId((current) => (current === item.id ? null : current));
+          setFailedIds((current) => new Set(current).add(itemId));
         }
       }
     })();
@@ -91,7 +102,7 @@ export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) 
     return () => {
       cancelled = true;
     };
-  }, [item, details]);
+  }, [item]);
 
   const goNext = useCallback(() => {
     setIndex((current) => Math.min(current + 1, items.length - 1));
@@ -123,7 +134,7 @@ export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) 
 
   const displayDuration = detail?.duration ?? item.duration;
   const originalUrl = detail?.originalUrl;
-  const isLoading = loadingId === item.id && !originalUrl;
+  const isLoading = !originalUrl && !failedIds.has(item.id);
 
   return (
     <div
@@ -132,20 +143,6 @@ export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) 
       role="dialog"
       aria-modal="true"
       aria-label="Media viewer"
-      onTouchStart={(event) => {
-        touchStartX.current = event.touches[0]?.clientX ?? null;
-      }}
-      onTouchEnd={(event) => {
-        const startX = touchStartX.current;
-        const endX = event.changedTouches[0]?.clientX;
-        touchStartX.current = null;
-        if (startX == null || endX == null) return;
-
-        const delta = endX - startX;
-        if (Math.abs(delta) < 48) return;
-        if (delta < 0) goNext();
-        else goPrev();
-      }}
     >
       <header className="shrink-0 bg-gradient-to-b from-black/80 via-black/50 to-transparent px-4 py-3 text-white">
         <div className="flex items-center gap-2">
@@ -175,13 +172,11 @@ export function MediaViewer({ items, initialIndex, onClose }: MediaViewerProps) 
           item.mediaType === "video" ? (
             <video key={item.id} src={originalUrl} controls playsInline className="max-h-full max-w-full object-contain" />
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <ViewerZoomableImage
               key={item.id}
               src={originalUrl}
-              alt=""
-              className="max-h-full max-w-full object-contain select-none"
-              draggable={false}
+              onSwipeLeft={goNext}
+              onSwipeRight={goPrev}
             />
           )
         ) : (
