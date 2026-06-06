@@ -106,11 +106,15 @@
 }
 
 /* Outside @layer so these always apply (Tailwind v4 won't purge) */
+/* Top/horizontal insets for app screens — bottom handled by bottom-nav position. */
 .content {
   padding-top: env(safe-area-inset-top);
   padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
+}
+
+.content-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 #app-shell {
@@ -127,7 +131,8 @@
 
 .bottom-nav {
   position: fixed;
-  bottom: 0;
+  /* Sit above the home-indicator zone — not inside .content bottom padding */
+  bottom: env(safe-area-inset-bottom);
   left: 0;
   right: 0;
   z-index: 50;
@@ -136,7 +141,6 @@
   background-color: #000000;
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
