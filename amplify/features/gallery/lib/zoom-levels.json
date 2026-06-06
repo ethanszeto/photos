@@ -9,10 +9,10 @@
       "liteCell": true,
       "thumbnailTier": "mini",
       "overscan": {
-        "max": 18,
-        "min": 4,
-        "viewportMultiplier": 1,
-        "maxMountedCells": 1600
+        "max": 6,
+        "min": 2,
+        "viewportMultiplier": 0.5,
+        "maxMountedCells": 384
       }
     },
     {
@@ -21,10 +21,12 @@
       "columns": 12,
       "gapPx": 2,
       "liteCell": true,
+      "thumbnailTier": "mini",
       "overscan": {
-        "max": 48,
-        "min": 10,
-        "viewportMultiplier": 2.5
+        "max": 10,
+        "min": 4,
+        "viewportMultiplier": 1,
+        "maxMountedCells": 360
       }
     },
     {
@@ -33,9 +35,9 @@
       "columns": 8,
       "gapPx": 2,
       "overscan": {
-        "max": 28,
-        "min": 10,
-        "viewportMultiplier": 2.5
+        "max": 14,
+        "min": 6,
+        "viewportMultiplier": 1.5
       }
     },
     {
@@ -44,9 +46,9 @@
       "columns": 5,
       "gapPx": 2,
       "overscan": {
-        "max": 28,
-        "min": 10,
-        "viewportMultiplier": 2.5
+        "max": 20,
+        "min": 8,
+        "viewportMultiplier": 2
       }
     },
     {
@@ -55,7 +57,7 @@
       "columns": 3,
       "gapPx": 2,
       "overscan": {
-        "max": 28,
+        "max": 24,
         "min": 10,
         "viewportMultiplier": 2.5
       }

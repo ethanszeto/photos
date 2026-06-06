@@ -7,9 +7,11 @@ import {
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
+  useReducer,
   useRef,
   type RefObject,
 } from "react";
+import { setThumbnailLoadBudget } from "@/features/gallery/lib/thumbnail-load-gate";
 import { MediaCell, MediaCellPlaceholder } from "@/features/gallery/components/MediaCell";
 import {
   computeVisibleImageRange,
@@ -33,6 +35,7 @@ type GalleryVirtualizerProps = {
   onSelect: (item: MediaItem) => void;
   onLiteZoom: (itemIndex: number) => void;
   parentRef: RefObject<HTMLDivElement | null>;
+  isScrollIdle: boolean;
   loadMoreSentinel?: React.ReactNode;
 };
 
@@ -56,6 +59,7 @@ export const GalleryVirtualizer = forwardRef<GalleryVirtualizerHandle, GalleryVi
       onSelect,
       onLiteZoom,
       parentRef,
+      isScrollIdle,
       loadMoreSentinel,
     },
     ref,
@@ -75,13 +79,33 @@ export const GalleryVirtualizer = forwardRef<GalleryVirtualizerHandle, GalleryVi
       [items, columns],
     );
 
+    const scrollRafRef = useRef<number | null>(null);
+    const [, bumpScrollFrame] = useReducer((tick: number) => tick + 1, 0);
+
     const virtualizer = useVirtualizer({
       count: rowCount,
       getScrollElement,
       estimateSize: () => rowHeight,
       overscan,
       getItemKey,
+      onChange: () => {
+        if (scrollRafRef.current != null) return;
+        scrollRafRef.current = requestAnimationFrame(() => {
+          scrollRafRef.current = null;
+          bumpScrollFrame();
+        });
+      },
     });
+
+    useEffect(() => {
+      return () => {
+        if (scrollRafRef.current != null) cancelAnimationFrame(scrollRafRef.current);
+      };
+    }, []);
+
+    useEffect(() => {
+      setThumbnailLoadBudget(!isScrollIdle);
+    }, [isScrollIdle]);
 
     useEffect(() => {
       if (rowHeight <= 0) return;
@@ -94,9 +118,9 @@ export const GalleryVirtualizer = forwardRef<GalleryVirtualizerHandle, GalleryVi
     const scrollEl = parentRef.current;
     const scrollOffset = virtualizer.scrollOffset ?? scrollEl?.scrollTop ?? 0;
     const visibleRange = computeVisibleImageRange(
-      virtualRows,
       scrollOffset,
       scrollEl?.clientHeight ?? 0,
+      rowHeight,
       columns,
       items.length,
     );

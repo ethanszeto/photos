@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useScrollIdle } from "@/features/gallery/hooks/useScrollIdle";
 import { GalleryVirtualizer, type GalleryVirtualizerHandle } from "@/features/gallery/components/GalleryVirtualizer";
 import { LoadMoreSentinel } from "@/features/gallery/components/LoadMoreSentinel";
 import { ZoomProvider } from "@/features/gallery/components/ZoomProvider";
@@ -58,11 +59,13 @@ function GalleryGridContent({
   hasMore,
 }: GalleryGridContentProps) {
   const { layout, awarenessFocalItemIndex, clearAwarenessFocal, zoomInAt } = useZoom();
+  const isScrollIdle = useScrollIdle(scrollContainerRef);
 
   return (
     <GalleryVirtualizer
       ref={gridRef}
       parentRef={scrollContainerRef}
+      isScrollIdle={isScrollIdle}
       items={items}
       layout={layout}
       awarenessFocalItemIndex={awarenessFocalItemIndex}

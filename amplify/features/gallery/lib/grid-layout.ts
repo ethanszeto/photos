@@ -37,12 +37,6 @@ export type GridLayoutMetrics = {
   liteCell: boolean;
 };
 
-type VirtualRowSlice = {
-  index: number;
-  start: number;
-  end: number;
-};
-
 export function getZoomLevelSpec(level: number): ZoomLevelSpec {
   const spec = GALLERY_ZOOM_LEVELS.find((entry) => entry.level === level);
   if (!spec) {
@@ -227,40 +221,35 @@ export function computeGridLayout({
 }
 
 /**
- * Indices intersecting the viewport, derived from virtual row geometry.
- * Mounted cells always load thumbnails; this range only drives fetch priority.
+ * Viewport item indices from scroll offset + row geometry only.
+ * Never expands to overscan — avoids Safari fast-scroll marking the whole mounted band visible.
  */
 export function computeVisibleImageRange(
-  virtualRows: VirtualRowSlice[],
   scrollOffset: number,
   viewportHeight: number,
+  rowHeight: number,
   columns: number,
   itemCount: number,
 ): ImageIndexRange {
-  if (virtualRows.length === 0 || itemCount === 0 || columns <= 0) {
-    return { start: 0, end: 0 };
+  if (itemCount === 0 || columns <= 0 || rowHeight <= 0 || viewportHeight <= 0) {
+    return { start: 0, end: -1 };
   }
 
-  const viewportEnd = scrollOffset + viewportHeight;
-  const visibleRows = virtualRows.filter((row) => row.end > scrollOffset && row.start < viewportEnd);
-
-  if (visibleRows.length === 0) {
-    const firstRow = virtualRows[0].index;
-    const lastRow = virtualRows[virtualRows.length - 1].index;
-    return {
-      start: firstRow * columns,
-      end: Math.min(itemCount - 1, (lastRow + 1) * columns - 1),
-    };
-  }
+  const totalRows = getRowCount(itemCount, columns);
+  const firstRow = Math.max(0, Math.floor(scrollOffset / rowHeight));
+  const lastRow = Math.min(
+    totalRows - 1,
+    Math.max(firstRow, Math.ceil((scrollOffset + viewportHeight) / rowHeight) - 1),
+  );
 
   return {
-    start: visibleRows[0].index * columns,
-    end: Math.min(itemCount - 1, (visibleRows[visibleRows.length - 1].index + 1) * columns - 1),
+    start: firstRow * columns,
+    end: Math.min(itemCount - 1, (lastRow + 1) * columns - 1),
   };
 }
 
 export function isIndexInRange(index: number, range: ImageIndexRange): boolean {
-  return index >= range.start && index <= range.end;
+  return range.end >= range.start && index >= range.start && index <= range.end;
 }
 
 /** Visible index overlap for one virtual row (avoids per-cell range math). */
