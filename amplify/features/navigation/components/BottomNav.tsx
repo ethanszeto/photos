@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Folder, LayoutGrid, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useUpload } from "@/features/upload/components/UploadProvider";
 
 type NavTab = {
@@ -26,7 +28,7 @@ function isAlbumsActive(pathname: string): boolean {
   return pathname === "/albums" || pathname.startsWith("/albums/");
 }
 
-export function BottomNav() {
+function BottomNavBar() {
   const pathname = usePathname();
   const { openUpload } = useUpload();
 
@@ -70,4 +72,17 @@ export function BottomNav() {
       </div>
     </nav>
   );
+}
+
+/** Portaled to document.body so iOS fixed positioning isn't clipped by overflow:hidden ancestors. */
+export function BottomNav() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  return createPortal(<BottomNavBar />, document.body);
 }

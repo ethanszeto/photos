@@ -87,7 +87,7 @@ export function PasscodeLock({ redirectTo = "/photos" }: PasscodeLockProps) {
         {error && <p className="animate-fade-in text-sm font-medium text-red-400">{error}</p>}
       </div>
 
-      <div className="w-full shrink-0 pb-20">
+      <div className="w-full shrink-0 pb-[max(5rem,env(safe-area-inset-bottom))]">
         <NumberPad onDigit={handleDigit} onDelete={handleDelete} disabled={submitting} />
       </div>
     </div>
