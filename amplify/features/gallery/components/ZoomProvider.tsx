@@ -5,6 +5,7 @@ import {
   clientPointToItemIndex,
   computeGridLayout,
   getDefaultZoomLevel,
+  type AwarenessFocal,
   type GridLayoutMetrics,
   type ZoomLevel,
 } from "@/features/gallery/lib/grid-layout";
@@ -27,7 +28,7 @@ export function ZoomProvider({ children, containerRef, itemCount }: ZoomProvider
   const [containerWidth, setContainerWidth] = useState(390);
   const [containerHeight, setContainerHeight] = useState(800);
   const [devicePixelRatio, setDevicePixelRatio] = useState(1);
-  const [awarenessFocalItemIndex, setAwarenessFocalItemIndex] = useState<number | null>(null);
+  const [awarenessFocal, setAwarenessFocal] = useState<AwarenessFocal | null>(null);
   const itemCountRef = useRef(itemCount);
   const layoutRef = useRef<GridLayoutMetrics | null>(null);
 
@@ -49,11 +50,11 @@ export function ZoomProvider({ children, containerRef, itemCount }: ZoomProvider
   }, [itemCount, layout]);
 
   const clearAwarenessFocal = useCallback(() => {
-    setAwarenessFocalItemIndex(null);
+    setAwarenessFocal(null);
   }, []);
 
-  const applyAwarenessZoom = useCallback((delta: 1 | -1, focalItemIndex: number) => {
-    setAwarenessFocalItemIndex(focalItemIndex);
+  const applyAwarenessZoom = useCallback((delta: 1 | -1, focalItemIndex: number, viewportOffsetY: number) => {
+    setAwarenessFocal({ itemIndex: focalItemIndex, viewportOffsetY });
     setZoomLevelState((current) => clampZoomLevel(current + delta));
   }, []);
 
@@ -76,7 +77,11 @@ export function ZoomProvider({ children, containerRef, itemCount }: ZoomProvider
     const element = containerRef.current;
     if (element) {
       const rect = element.getBoundingClientRect();
-      applyAwarenessZoom(1, focalFromClientPoint(rect.left + rect.width / 2, rect.top + rect.height / 2));
+      applyAwarenessZoom(
+        1,
+        focalFromClientPoint(rect.left + rect.width / 2, rect.top + rect.height / 2),
+        element.clientHeight / 2,
+      );
       return;
     }
     setZoomLevelState((current) => clampZoomLevel(current + 1));
@@ -86,7 +91,11 @@ export function ZoomProvider({ children, containerRef, itemCount }: ZoomProvider
     const element = containerRef.current;
     if (element) {
       const rect = element.getBoundingClientRect();
-      applyAwarenessZoom(-1, focalFromClientPoint(rect.left + rect.width / 2, rect.top + rect.height / 2));
+      applyAwarenessZoom(
+        -1,
+        focalFromClientPoint(rect.left + rect.width / 2, rect.top + rect.height / 2),
+        element.clientHeight / 2,
+      );
       return;
     }
     setZoomLevelState((current) => clampZoomLevel(current - 1));
@@ -94,16 +103,18 @@ export function ZoomProvider({ children, containerRef, itemCount }: ZoomProvider
 
   const zoomInAt = useCallback(
     (itemIndex: number) => {
-      applyAwarenessZoom(1, itemIndex);
+      const element = containerRef.current;
+      applyAwarenessZoom(1, itemIndex, element ? element.clientHeight / 2 : 0);
     },
-    [applyAwarenessZoom],
+    [applyAwarenessZoom, containerRef],
   );
 
   const zoomOutAt = useCallback(
     (itemIndex: number) => {
-      applyAwarenessZoom(-1, itemIndex);
+      const element = containerRef.current;
+      applyAwarenessZoom(-1, itemIndex, element ? element.clientHeight / 2 : 0);
     },
-    [applyAwarenessZoom],
+    [applyAwarenessZoom, containerRef],
   );
 
   useEffect(() => {
@@ -140,7 +151,7 @@ export function ZoomProvider({ children, containerRef, itemCount }: ZoomProvider
     () => ({
       zoomLevel,
       layout,
-      awarenessFocalItemIndex,
+      awarenessFocal,
       clearAwarenessFocal,
       setZoomLevel,
       zoomIn,
@@ -151,7 +162,7 @@ export function ZoomProvider({ children, containerRef, itemCount }: ZoomProvider
     [
       zoomLevel,
       layout,
-      awarenessFocalItemIndex,
+      awarenessFocal,
       clearAwarenessFocal,
       setZoomLevel,
       zoomIn,

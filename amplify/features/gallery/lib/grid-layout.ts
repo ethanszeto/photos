@@ -252,6 +252,58 @@ export function isIndexInRange(index: number, range: ImageIndexRange): boolean {
   return range.end >= range.start && index >= range.start && index <= range.end;
 }
 
+/** Pinch / button zoom anchor — item under the focal point plus its Y offset in the viewport. */
+export type AwarenessFocal = {
+  itemIndex: number;
+  viewportOffsetY: number;
+};
+
+type ZoomScrollLayout = {
+  columns: number;
+  rowHeight: number;
+};
+
+/**
+ * Preserve the pinch centroid across a zoom step by anchoring scroll to the focal item
+ * and the relative position within its row.
+ */
+export function computeZoomScrollTop({
+  focalItemIndex,
+  viewportOffsetY,
+  scrollTop,
+  prev,
+  next,
+}: {
+  focalItemIndex: number;
+  viewportOffsetY: number;
+  scrollTop: number;
+  prev: ZoomScrollLayout;
+  next: ZoomScrollLayout;
+}): number {
+  if (prev.rowHeight <= 0 || next.rowHeight <= 0 || prev.columns <= 0 || next.columns <= 0) {
+    return scrollTop;
+  }
+
+  const oldRow = Math.floor(focalItemIndex / prev.columns);
+  const contentYAtPinch = scrollTop + viewportOffsetY;
+  const pinchFraction = (contentYAtPinch - oldRow * prev.rowHeight) / prev.rowHeight;
+  const newRow = Math.floor(focalItemIndex / next.columns);
+  const anchorY = newRow * next.rowHeight + pinchFraction * next.rowHeight;
+  return Math.max(0, anchorY - viewportOffsetY);
+}
+
+/** Whether a virtual row's absolute offset intersects the scroll viewport. */
+export function isRowIntersectingViewport(
+  rowStart: number,
+  rowHeight: number,
+  scrollTop: number,
+  viewportHeight: number,
+): boolean {
+  if (rowHeight <= 0 || viewportHeight <= 0) return false;
+  const viewportBottom = scrollTop + viewportHeight;
+  return rowStart < viewportBottom && rowStart + rowHeight > scrollTop;
+}
+
 /** Visible index overlap for one virtual row (avoids per-cell range math). */
 export function rowVisibleOverlap(
   rowIndex: number,

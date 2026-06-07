@@ -1,12 +1,12 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { GridLayoutMetrics, ZoomLevel } from "@/features/gallery/lib/grid-layout";
+import type { AwarenessFocal, GridLayoutMetrics, ZoomLevel } from "@/features/gallery/lib/grid-layout";
 
 export type ZoomContextValue = {
   zoomLevel: ZoomLevel;
   layout: GridLayoutMetrics;
-  awarenessFocalItemIndex: number | null;
+  awarenessFocal: AwarenessFocal | null;
   clearAwarenessFocal: () => void;
   setZoomLevel: (level: ZoomLevel) => void;
   zoomIn: () => void;

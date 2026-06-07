@@ -14,10 +14,10 @@ import {
 import { setThumbnailLoadBudget } from "@/features/gallery/lib/thumbnail-load-gate";
 import { MediaCell, MediaCellPlaceholder } from "@/features/gallery/components/MediaCell";
 import {
-  computeVisibleImageRange,
+  computeZoomScrollTop,
   getCenterItemIndex,
-  isIndexInRange,
-  rowVisibleOverlap,
+  isRowIntersectingViewport,
+  type AwarenessFocal,
   type GridLayoutMetrics,
 } from "@/features/gallery/lib/grid-layout";
 import type { GalleryVirtualizerHandle } from "@/features/gallery/lib/types";
@@ -30,7 +30,7 @@ const LOAD_MORE_SENTINEL_HEIGHT = 80;
 type GalleryVirtualizerProps = {
   items: MediaItem[];
   layout: GridLayoutMetrics;
-  awarenessFocalItemIndex: number | null;
+  awarenessFocal: AwarenessFocal | null;
   onAwarenessFocalApplied: () => void;
   onSelect: (item: MediaItem) => void;
   onLiteZoom: (itemIndex: number) => void;
@@ -54,7 +54,7 @@ export const GalleryVirtualizer = forwardRef<GalleryVirtualizerHandle, GalleryVi
     {
       items,
       layout,
-      awarenessFocalItemIndex,
+      awarenessFocal,
       onAwarenessFocalApplied,
       onSelect,
       onLiteZoom,
@@ -107,23 +107,10 @@ export const GalleryVirtualizer = forwardRef<GalleryVirtualizerHandle, GalleryVi
       setThumbnailLoadBudget(!isScrollIdle);
     }, [isScrollIdle]);
 
-    useEffect(() => {
-      if (rowHeight <= 0) return;
-      for (const virtualRow of virtualizer.getVirtualItems()) {
-        virtualizer.resizeItem(virtualRow.index, rowHeight);
-      }
-    }, [rowHeight, virtualizer]);
-
     const virtualRows = virtualizer.getVirtualItems();
     const scrollEl = parentRef.current;
-    const scrollOffset = virtualizer.scrollOffset ?? scrollEl?.scrollTop ?? 0;
-    const visibleRange = computeVisibleImageRange(
-      scrollOffset,
-      scrollEl?.clientHeight ?? 0,
-      rowHeight,
-      columns,
-      items.length,
-    );
+    const viewportTop = scrollEl?.scrollTop ?? 0;
+    const viewportHeight = scrollEl?.clientHeight ?? 0;
 
     const getCenterIndex = useCallback(() => {
       const el = parentRef.current;
@@ -138,13 +125,32 @@ export const GalleryVirtualizer = forwardRef<GalleryVirtualizerHandle, GalleryVi
       const prev = layoutSnapshot.current;
       const next: LayoutSnapshot = { columns, rowHeight, gapPx };
 
+      if (rowHeight > 0) {
+        for (const virtualRow of virtualizer.getVirtualItems()) {
+          virtualizer.resizeItem(virtualRow.index, rowHeight);
+        }
+      }
+
       if (prev && (prev.columns !== columns || prev.rowHeight !== rowHeight || prev.gapPx !== gapPx)) {
         const focalIndex =
-          awarenessFocalItemIndex ??
+          awarenessFocal?.itemIndex ??
           getCenterItemIndex(el.scrollTop, el.clientHeight, prev.rowHeight, prev.columns, items.length);
-        const rowIndex = Math.floor(focalIndex / columns);
-        virtualizer.scrollToIndex(rowIndex, { align: "center", behavior: "auto" });
-        if (awarenessFocalItemIndex != null) {
+        const viewportOffsetY = awarenessFocal?.viewportOffsetY ?? el.clientHeight / 2;
+        const nextScrollTop = computeZoomScrollTop({
+          focalItemIndex: focalIndex,
+          viewportOffsetY,
+          scrollTop: el.scrollTop,
+          prev,
+          next: { columns, rowHeight },
+        });
+        const maxScrollTop = Math.max(0, virtualizer.getTotalSize() - el.clientHeight);
+        const clampedScrollTop = Math.min(maxScrollTop, nextScrollTop);
+
+        virtualizer.scrollToOffset(clampedScrollTop, { behavior: "auto" });
+        virtualizer.measure();
+        bumpScrollFrame();
+
+        if (awarenessFocal != null) {
           onAwarenessFocalApplied();
         }
       }
@@ -158,8 +164,9 @@ export const GalleryVirtualizer = forwardRef<GalleryVirtualizerHandle, GalleryVi
       items.length,
       virtualizer,
       parentRef,
-      awarenessFocalItemIndex,
+      awarenessFocal,
       onAwarenessFocalApplied,
+      bumpScrollFrame,
     ]);
 
     useImperativeHandle(
@@ -193,7 +200,12 @@ export const GalleryVirtualizer = forwardRef<GalleryVirtualizerHandle, GalleryVi
       <div style={{ height: `${scrollHeight}px`, width: "100%", position: "relative" }}>
         {virtualRows.map((virtualRow) => {
           const startIndex = virtualRow.index * columns;
-          const visibleOverlap = rowVisibleOverlap(virtualRow.index, columns, items.length, visibleRange);
+          const rowInViewport = isRowIntersectingViewport(
+            virtualRow.start,
+            rowHeight,
+            viewportTop,
+            viewportHeight,
+          );
 
           return (
             <div
@@ -216,7 +228,7 @@ export const GalleryVirtualizer = forwardRef<GalleryVirtualizerHandle, GalleryVi
                 }
 
                 const itemIndex = startIndex + col;
-                const isVisibleImage = visibleOverlap != null && isIndexInRange(itemIndex, visibleOverlap);
+                const isVisibleImage = rowInViewport;
 
                 return (
                   <MediaCell

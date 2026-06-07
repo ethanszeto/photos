@@ -58,7 +58,7 @@ function GalleryGridContent({
   onLoadMore,
   hasMore,
 }: GalleryGridContentProps) {
-  const { layout, awarenessFocalItemIndex, clearAwarenessFocal, zoomInAt } = useZoom();
+  const { layout, awarenessFocal, clearAwarenessFocal, zoomInAt } = useZoom();
   const isScrollIdle = useScrollIdle(scrollContainerRef);
 
   return (
@@ -68,7 +68,7 @@ function GalleryGridContent({
       isScrollIdle={isScrollIdle}
       items={items}
       layout={layout}
-      awarenessFocalItemIndex={awarenessFocalItemIndex}
+      awarenessFocal={awarenessFocal}
       onAwarenessFocalApplied={clearAwarenessFocal}
       onSelect={onSelect}
       onLiteZoom={zoomInAt}

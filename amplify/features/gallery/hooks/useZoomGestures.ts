@@ -13,7 +13,7 @@ type UseZoomGesturesOptions = {
   layoutRef: RefObject<GridLayoutMetrics | null>;
   itemCountRef: RefObject<number>;
   zoomLevel: ZoomLevel;
-  onAwarenessZoom: (delta: 1 | -1, focalItemIndex: number) => void;
+  onAwarenessZoom: (delta: 1 | -1, focalItemIndex: number, viewportOffsetY: number) => void;
 };
 
 /** Pinch and ctrl+wheel zoom attached to the gallery scroll container. */
@@ -70,17 +70,18 @@ export function useZoomGestures({
       const scale = distance / pinchRef.current.distance;
       const { x, y } = getTouchCentroid(event.touches);
       const focalIndex = focalFromClientPoint(x, y);
+      const viewportOffsetY = y - element.getBoundingClientRect().top;
 
       if (scale > 1.2) {
         const next = clampZoomLevel(pinchRef.current.level + 1);
         if (next !== pinchRef.current.level) {
-          onAwarenessZoomRef.current(1, focalIndex);
+          onAwarenessZoomRef.current(1, focalIndex, viewportOffsetY);
           pinchRef.current = { distance, level: next };
         }
       } else if (scale < 0.83) {
         const next = clampZoomLevel(pinchRef.current.level - 1);
         if (next !== pinchRef.current.level) {
-          onAwarenessZoomRef.current(-1, focalIndex);
+          onAwarenessZoomRef.current(-1, focalIndex, viewportOffsetY);
           pinchRef.current = { distance, level: next };
         }
       }
@@ -93,11 +94,13 @@ export function useZoomGestures({
     const onWheel = (event: WheelEvent) => {
       if (!event.ctrlKey) return;
       event.preventDefault();
+      const rect = element.getBoundingClientRect();
       const focalIndex = focalFromClientPoint(event.clientX, event.clientY);
+      const viewportOffsetY = event.clientY - rect.top;
       if (event.deltaY < 0) {
-        onAwarenessZoomRef.current(1, focalIndex);
+        onAwarenessZoomRef.current(1, focalIndex, viewportOffsetY);
       } else if (event.deltaY > 0) {
-        onAwarenessZoomRef.current(-1, focalIndex);
+        onAwarenessZoomRef.current(-1, focalIndex, viewportOffsetY);
       }
     };
 
