@@ -1,5 +1,6 @@
 "use client";
 
+import { dampenPinchScale } from "@/features/gallery/lib/grid-layout";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const MIN_SCALE = 1;
@@ -31,7 +32,12 @@ export function ViewerZoomableImage({ src, onSwipeLeft, onSwipeRight }: ViewerZo
   const [translate, setTranslate] = useState<Point>({ x: 0, y: 0 });
   const scaleRef = useRef(1);
   const translateRef = useRef<Point>({ x: 0, y: 0 });
-  const pinchRef = useRef<{ distance: number; scale: number; midpoint: Point } | null>(null);
+  const pinchRef = useRef<{
+    distance: number;
+    startScale: number;
+    startTranslate: Point;
+    focal: Point;
+  } | null>(null);
   const panRef = useRef<{ start: Point; base: Point } | null>(null);
   const swipeRef = useRef<{ startX: number; startY: number } | null>(null);
 
@@ -68,14 +74,37 @@ export function ViewerZoomableImage({ src, onSwipeLeft, onSwipeRight }: ViewerZo
     });
   }, [applyTransform]);
 
+  const applyPinchFromSession = useCallback(
+    (rawRatio: number) => {
+      const session = pinchRef.current;
+      const container = containerRef.current;
+      if (!session || !container || session.distance <= 0) return;
+
+      const dampedRatio = dampenPinchScale(rawRatio);
+      const nextScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, session.startScale * dampedRatio));
+
+      const rect = container.getBoundingClientRect();
+      const focalX = session.focal.x - rect.left - rect.width / 2;
+      const focalY = session.focal.y - rect.top - rect.height / 2;
+      const ratio = nextScale / session.startScale;
+
+      applyTransform(nextScale, {
+        x: session.startTranslate.x * ratio + focalX * (1 - ratio),
+        y: session.startTranslate.y * ratio + focalY * (1 - ratio),
+      });
+    },
+    [applyTransform],
+  );
+
   const onTouchStart = (event: React.TouchEvent) => {
     if (event.touches.length === 2) {
       swipeRef.current = null;
       panRef.current = null;
       pinchRef.current = {
         distance: getTouchDistance(event.touches[0], event.touches[1]),
-        scale: scaleRef.current,
-        midpoint: getTouchMidpoint(event.touches[0], event.touches[1]),
+        startScale: scaleRef.current,
+        startTranslate: { ...translateRef.current },
+        focal: getTouchMidpoint(event.touches[0], event.touches[1]),
       };
       return;
     }
@@ -98,9 +127,8 @@ export function ViewerZoomableImage({ src, onSwipeLeft, onSwipeRight }: ViewerZo
     if (event.touches.length === 2 && pinchRef.current) {
       event.preventDefault();
       const distance = getTouchDistance(event.touches[0], event.touches[1]);
-      const midpoint = getTouchMidpoint(event.touches[0], event.touches[1]);
-      const nextScale = pinchRef.current.scale * (distance / pinchRef.current.distance);
-      zoomAroundPoint(nextScale, midpoint);
+      if (distance <= 0) return;
+      applyPinchFromSession(distance / pinchRef.current.distance);
       return;
     }
 
@@ -116,7 +144,7 @@ export function ViewerZoomableImage({ src, onSwipeLeft, onSwipeRight }: ViewerZo
       translateRef.current = next;
       setTranslate(next);
     }
-  }, [zoomAroundPoint]);
+  }, [applyPinchFromSession]);
 
   useEffect(() => {
     const node = containerRef.current;
