@@ -19,23 +19,26 @@ type GalleryGridProps = {
 /** Zoom-aware virtualized grid with a single scroll container for gestures and pagination. */
 export function GalleryGrid({ items, gridRef, onSelect, onLoadMore, hasMore }: GalleryGridProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const zoomTransformRef = useRef<HTMLDivElement>(null);
 
   return (
-    <ZoomProvider containerRef={scrollContainerRef} itemCount={items.length}>
+    <ZoomProvider containerRef={scrollContainerRef} transformRef={zoomTransformRef} itemCount={items.length}>
       <div
         ref={scrollContainerRef}
         data-gallery-scroll
         className="h-full min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-14 [-webkit-overflow-scrolling:touch]"
         style={{ touchAction: "pan-y" }}
       >
-        <GalleryGridContent
-          items={items}
-          scrollContainerRef={scrollContainerRef}
-          gridRef={gridRef}
-          onSelect={onSelect}
-          onLoadMore={onLoadMore}
-          hasMore={hasMore}
-        />
+        <div ref={zoomTransformRef} className="w-full will-change-transform">
+          <GalleryGridContent
+            items={items}
+            scrollContainerRef={scrollContainerRef}
+            gridRef={gridRef}
+            onSelect={onSelect}
+            onLoadMore={onLoadMore}
+            hasMore={hasMore}
+          />
+        </div>
       </div>
     </ZoomProvider>
   );

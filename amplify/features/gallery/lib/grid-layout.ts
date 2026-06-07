@@ -55,6 +55,28 @@ export function clampZoomLevel(level: number): ZoomLevel {
   return clamped as ZoomLevel;
 }
 
+/** Pinch scale ratio that maps to one discrete zoom level step. */
+export const ZOOM_LEVEL_SCALE_RATIO = 1.2;
+
+/** Whole level steps implied by a pinch scale relative to the gesture start level. */
+export function zoomLevelStepsFromPinchScale(scale: number): number {
+  if (scale <= 0) return 0;
+  return Math.round(Math.log(scale) / Math.log(ZOOM_LEVEL_SCALE_RATIO));
+}
+
+export function targetZoomLevelFromPinch(baseLevel: number, scale: number): ZoomLevel {
+  return clampZoomLevel(baseLevel + zoomLevelStepsFromPinchScale(scale));
+}
+
+/** Clamp live pinch scale so the visual range stays within available zoom levels. */
+export function clampPinchVisualScale(scale: number, baseLevel: number): number {
+  const maxStepsUp = ZOOM_LEVEL_COUNT - baseLevel;
+  const maxStepsDown = baseLevel - 1;
+  const min = Math.pow(ZOOM_LEVEL_SCALE_RATIO, -maxStepsDown);
+  const max = Math.pow(ZOOM_LEVEL_SCALE_RATIO, maxStepsUp);
+  return Math.min(max, Math.max(min, scale));
+}
+
 /** Narrow screens: 2-column level becomes single column. */
 export function resolveColumns(specColumns: number, containerWidth: number): number {
   if (specColumns === 2 && containerWidth < 420) {

@@ -19,11 +19,12 @@ export { GALLERY_ZOOM_LEVELS, getDefaultZoomLevel, ZOOM_LEVEL_COUNT } from "@/fe
 type ZoomProviderProps = {
   children: ReactNode;
   containerRef: React.RefObject<HTMLElement | null>;
+  transformRef: React.RefObject<HTMLElement | null>;
   itemCount: number;
 };
 
 /** Apple Photos-style zoom — layout from computeGridLayout, gestures via useZoomGestures. */
-export function ZoomProvider({ children, containerRef, itemCount }: ZoomProviderProps) {
+export function ZoomProvider({ children, containerRef, transformRef, itemCount }: ZoomProviderProps) {
   const [zoomLevel, setZoomLevelState] = useState<ZoomLevel>(getDefaultZoomLevel);
   const [containerWidth, setContainerWidth] = useState(390);
   const [containerHeight, setContainerHeight] = useState(800);
@@ -56,6 +57,12 @@ export function ZoomProvider({ children, containerRef, itemCount }: ZoomProvider
   const applyAwarenessZoom = useCallback((delta: 1 | -1, focalItemIndex: number, viewportOffsetY: number) => {
     setAwarenessFocal({ itemIndex: focalItemIndex, viewportOffsetY });
     setZoomLevelState((current) => clampZoomLevel(current + delta));
+  }, []);
+
+  const commitZoomAtFocal = useCallback((targetLevel: ZoomLevel, focalItemIndex: number, viewportOffsetY: number) => {
+    const next = clampZoomLevel(targetLevel);
+    setAwarenessFocal({ itemIndex: focalItemIndex, viewportOffsetY });
+    setZoomLevelState(next);
   }, []);
 
   const focalFromClientPoint = useCallback(
@@ -141,10 +148,12 @@ export function ZoomProvider({ children, containerRef, itemCount }: ZoomProvider
 
   useZoomGestures({
     containerRef,
+    transformRef,
     layoutRef,
     itemCountRef,
     zoomLevel,
-    onAwarenessZoom: applyAwarenessZoom,
+    onCommitZoom: commitZoomAtFocal,
+    onStepZoom: applyAwarenessZoom,
   });
 
   const value = useMemo<ZoomContextValue>(
