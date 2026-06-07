@@ -55,26 +55,54 @@ export function clampZoomLevel(level: number): ZoomLevel {
   return clamped as ZoomLevel;
 }
 
-/** Pinch scale ratio that maps to one discrete zoom level step. */
-export const ZOOM_LEVEL_SCALE_RATIO = 1.2;
+/** Pinch scale ratio required per discrete zoom level (~40% spread/finger travel per step). */
+export const ZOOM_LEVEL_SCALE_RATIO = 1.4;
+
+/** Dampens how quickly visual scale follows finger distance (lower = more resistant). */
+export const PINCH_VISUAL_DAMPING = 0.55;
+
+/** Max level change per pinch release — typical vs. an extreme spread/pinch. */
+export const PINCH_MAX_LEVEL_STEPS = 2;
+export const PINCH_MAX_LEVEL_STEPS_DRASTIC = 3;
+export const PINCH_DRASTIC_MIN_RAW_STEPS = 2.75;
+
+/** Raw finger scale → resisted scale used for visuals and level commit. */
+export function dampenPinchScale(rawScale: number): number {
+  if (rawScale === 1) return 1;
+  return 1 + (rawScale - 1) * PINCH_VISUAL_DAMPING;
+}
+
+function rawPinchLevelSteps(scale: number): number {
+  const raw = Math.log(scale) / Math.log(ZOOM_LEVEL_SCALE_RATIO);
+  if (Math.abs(raw) < 0.7) return 0;
+  return raw > 0 ? Math.floor(raw + 0.1) : Math.ceil(raw - 0.1);
+}
 
 /** Whole level steps implied by a pinch scale relative to the gesture start level. */
 export function zoomLevelStepsFromPinchScale(scale: number): number {
   if (scale <= 0) return 0;
-  return Math.round(Math.log(scale) / Math.log(ZOOM_LEVEL_SCALE_RATIO));
+
+  const steps = rawPinchLevelSteps(scale);
+  if (steps === 0) return 0;
+
+  const absRaw = Math.abs(Math.log(scale) / Math.log(ZOOM_LEVEL_SCALE_RATIO));
+  const isDrastic = absRaw >= PINCH_DRASTIC_MIN_RAW_STEPS;
+  const maxSteps = isDrastic ? PINCH_MAX_LEVEL_STEPS_DRASTIC : PINCH_MAX_LEVEL_STEPS;
+  return Math.sign(steps) * Math.min(Math.abs(steps), maxSteps);
 }
 
 export function targetZoomLevelFromPinch(baseLevel: number, scale: number): ZoomLevel {
   return clampZoomLevel(baseLevel + zoomLevelStepsFromPinchScale(scale));
 }
 
-/** Clamp live pinch scale so the visual range stays within available zoom levels. */
-export function clampPinchVisualScale(scale: number, baseLevel: number): number {
+/** Resisted + clamped scale for live pinch visuals and commit. */
+export function resolvePinchScale(rawScale: number, baseLevel: number): number {
+  const damped = dampenPinchScale(rawScale);
   const maxStepsUp = ZOOM_LEVEL_COUNT - baseLevel;
   const maxStepsDown = baseLevel - 1;
   const min = Math.pow(ZOOM_LEVEL_SCALE_RATIO, -maxStepsDown);
   const max = Math.pow(ZOOM_LEVEL_SCALE_RATIO, maxStepsUp);
-  return Math.min(max, Math.max(min, scale));
+  return Math.min(max, Math.max(min, damped));
 }
 
 /** Narrow screens: 2-column level becomes single column. */

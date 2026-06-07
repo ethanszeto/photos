@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, type RefObject } from "react";
 import {
-  clampPinchVisualScale,
   clientPointToItemIndex,
+  resolvePinchScale,
   targetZoomLevelFromPinch,
   type GridLayoutMetrics,
   type ZoomLevel,
@@ -17,6 +17,9 @@ type PinchSession = {
   baseLevel: ZoomLevel;
   focalItemIndex: number;
   viewportOffsetY: number;
+  lockedScrollTop: number;
+  originX: number;
+  originY: number;
 };
 
 type UseZoomGesturesOptions = {
@@ -104,15 +107,23 @@ export function useZoomGestures({
       return { originX: clientX - rect.left, originY: clientY - rect.top };
     };
 
+    const releasePinchCapture = () => {
+      element.style.touchAction = "";
+      element.style.overflowY = "";
+    };
+
     const finishPinch = (scale: number) => {
       const session = pinchRef.current;
       const transformEl = transformRef.current;
       pinchRef.current = null;
+      releasePinchCapture();
 
       if (!session || !transformEl || session.startDistance <= 0) {
         if (transformEl) resetTransformInstant(transformEl);
         return;
       }
+
+      element.scrollTop = session.lockedScrollTop;
 
       const targetLevel = targetZoomLevelFromPinch(session.baseLevel, scale);
 
@@ -131,8 +142,11 @@ export function useZoomGestures({
       const distance = getTouchDistance(event.touches);
       if (distance <= 0) return;
 
+      event.preventDefault();
+
       const { x, y } = getTouchCentroid(event.touches);
       const rect = element.getBoundingClientRect();
+      const { originX, originY } = transformOriginFromClientPoint(x, y);
 
       pinchRef.current = {
         startDistance: distance,
@@ -140,7 +154,13 @@ export function useZoomGestures({
         baseLevel: layoutRef.current?.zoomLevel ?? zoomLevel,
         focalItemIndex: focalFromClientPoint(x, y),
         viewportOffsetY: y - rect.top,
+        lockedScrollTop: element.scrollTop,
+        originX,
+        originY,
       };
+
+      element.style.touchAction = "none";
+      element.style.overflowY = "hidden";
 
       const transformEl = transformRef.current;
       if (transformEl) {
@@ -152,22 +172,23 @@ export function useZoomGestures({
       if (event.touches.length !== 2 || !pinchRef.current) return;
       event.preventDefault();
 
+      element.scrollTop = pinchRef.current.lockedScrollTop;
+
       const distance = getTouchDistance(event.touches);
       if (distance <= 0 || pinchRef.current.startDistance <= 0) return;
 
       const rawScale = distance / pinchRef.current.startDistance;
-      const scale = clampPinchVisualScale(rawScale, pinchRef.current.baseLevel);
+      const scale = resolvePinchScale(rawScale, pinchRef.current.baseLevel);
       pinchRef.current.lastScale = scale;
+
       const { x, y } = getTouchCentroid(event.touches);
       const rect = element.getBoundingClientRect();
-      const { originX, originY } = transformOriginFromClientPoint(x, y);
-
       pinchRef.current.focalItemIndex = focalFromClientPoint(x, y);
       pinchRef.current.viewportOffsetY = y - rect.top;
 
       const transformEl = transformRef.current;
       if (transformEl) {
-        applyVisualScale(transformEl, scale, originX, originY);
+        applyVisualScale(transformEl, scale, pinchRef.current.originX, pinchRef.current.originY);
       }
     };
 
@@ -191,13 +212,14 @@ export function useZoomGestures({
       }
     };
 
-    element.addEventListener("touchstart", onTouchStart, { passive: true });
+    element.addEventListener("touchstart", onTouchStart, { passive: false });
     element.addEventListener("touchmove", onTouchMove, { passive: false });
     element.addEventListener("touchend", onTouchEnd, { passive: true });
     element.addEventListener("touchcancel", onTouchEnd, { passive: true });
     element.addEventListener("wheel", onWheel, { passive: false });
 
     return () => {
+      releasePinchCapture();
       element.removeEventListener("touchstart", onTouchStart);
       element.removeEventListener("touchmove", onTouchMove);
       element.removeEventListener("touchend", onTouchEnd);
